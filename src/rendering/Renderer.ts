@@ -133,11 +133,11 @@ export class Renderer {
 
     // Minimal HUD Overlay (Top-Left)
     const playerTank = tanks.find((t) => t.id === 'player') || tanks[0];
-    const dummyTank = tanks.find((t) => t.id !== 'player');
+    const opponentTank = tanks.find((t) => t.id !== 'player');
 
     ctx.fillStyle = '#94a3b8';
     ctx.font = '600 14px system-ui, sans-serif';
-    ctx.fillText('MINI TANK DUEL — PHASE 4: MATCH SYSTEM', bounds.x + 20, bounds.y + 30);
+    ctx.fillText('MINI TANK DUEL — PHASE 5: BASIC AI', bounds.x + 20, bounds.y + 30);
 
     ctx.fillStyle = '#64748b';
     ctx.font = '500 12px system-ui, sans-serif';
@@ -152,16 +152,15 @@ export class Renderer {
       ctx.fillText(reloadText, bounds.x + 20, bounds.y + 68);
     }
 
-    // Target Dummy Status (Top-Right)
-    if (dummyTank) {
-      ctx.fillStyle = dummyTank.isAlive() ? '#f43f5e' : '#64748b';
+    // AI Opponent Status (Top-Right)
+    if (opponentTank) {
+      ctx.fillStyle = opponentTank.isAlive() ? '#f43f5e' : '#64748b';
       ctx.font = '600 12px system-ui, monospace';
-      const dummyText = dummyTank.isAlive()
-        ? `TARGET DUMMY HP: ${dummyTank.hp}/${dummyTank.maxHp}`
-        : 'TARGET DUMMY: DESTROYED';
-      ctx.fillText(dummyText, bounds.x + bounds.width - 240, bounds.y + 30);
+      const aiText = opponentTank.isAlive()
+        ? `AI OPPONENT HP: ${opponentTank.hp}/${opponentTank.maxHp}`
+        : 'AI OPPONENT: DESTROYED';
+      ctx.fillText(aiText, bounds.x + bounds.width - 240, bounds.y + 30);
     }
-
     // Best-of-5 Scoreboard (Top Center)
     if (score) {
       this.renderScoreboard(score, bounds);
@@ -286,7 +285,7 @@ export class Renderer {
       ctx.fillStyle = '#ffffff';
       ctx.font = '700 18px system-ui, sans-serif';
       ctx.fillText(
-        isPlayerWinner ? 'PLAYER WINS THE MATCH' : 'TARGET WINS THE MATCH',
+        isPlayerWinner ? 'PLAYER WINS THE MATCH' : 'AI OPPONENT WINS THE MATCH',
         centerX,
         centerY + 16
       );

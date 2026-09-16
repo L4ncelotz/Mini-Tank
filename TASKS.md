@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4 — Match System complete.
+Phase 5 — Basic AI complete.
 
 ## Done
 
@@ -50,6 +50,16 @@ Phase 4 — Match System complete.
   - [x] Write unit tests for RoundManager and match flow
   - [x] Run typecheck and production build
   - [x] Verify round transitions, score tracking, and match win in browser
+- [x] Phase 5 — Basic AI
+  - [x] Create AI configuration module AIConfig
+  - [x] Implement AIController with target awareness and reaction delay
+  - [x] Implement AI steering, facing player, and movement repositioning
+  - [x] Implement AI direct firing using normal tank controls
+  - [x] Integrate AIController into Game coordinator
+  - [x] Update Renderer HUD labels for AI opponent
+  - [x] Write unit tests for AIController logic and constraints
+  - [x] Run typecheck and production build
+  - [x] Verify AI duel behavior in live browser
 
 ## In Progress
 
@@ -57,7 +67,6 @@ None
 
 ## Next
 
-- [ ] Phase 5 — Basic AI
 - [ ] Phase 6 — Defensive and Tactical AI
 - [ ] Phase 7 — Arena Maps
 - [ ] Phase 8 — Dash and Game Feel
