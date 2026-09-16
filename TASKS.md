@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 1 — Foundation complete.
+Phase 2 — Basic Combat complete.
 
 ## Done
 
@@ -21,13 +21,23 @@ Phase 1 — Foundation complete.
   - [x] Run typecheck
   - [x] Run build
   - [x] Verify controls manually
+- [x] Phase 2 — Basic Combat
+  - [x] Add bullet configuration and types
+  - [x] Add fire input to InputManager
+  - [x] Update Tank entity with cooldown and HP
+  - [x] Implement Bullet entity
+  - [x] Implement bullet collision and CombatSystem
+  - [x] Update Renderer to draw bullets and dummy target
+  - [x] Integrate CombatSystem into Game coordinator
+  - [x] Write unit tests for combat and bullets
+  - [x] Run typecheck and production build
+  - [x] Verify firing, cooldown, and collisions in browser
 
 ## In Progress
 
 None
 ## Next
 
-- [ ] Phase 2 — Basic Combat
 - [ ] Phase 3 — Ricochet
 - [ ] Phase 4 — Match System
 - [ ] Phase 5 — Basic AI

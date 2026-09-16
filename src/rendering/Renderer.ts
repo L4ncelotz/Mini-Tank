@@ -1,4 +1,5 @@
-import { ARENA_CONFIG, PLAYER_CONFIG } from '../config/gameplay';
+import { ARENA_CONFIG, BULLET_CONFIG, PLAYER_CONFIG } from '../config/gameplay';
+import type { Bullet } from '../entities/Bullet';
 import type { Tank } from '../entities/Tank';
 import type { ArenaBounds } from '../types/game';
 
@@ -46,7 +47,7 @@ export class Renderer {
     this.offsetY = Math.floor((viewportHeight - ARENA_CONFIG.height * this.scale) / 2);
   }
 
-  public render(tank: Tank, bounds: ArenaBounds): void {
+  public render(tanks: readonly Tank[], bullets: readonly Bullet[], bounds: ArenaBounds): void {
     const ctx = this.ctx;
     const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
 
@@ -93,23 +94,104 @@ export class Renderer {
       bounds.height - ARENA_CONFIG.wallThickness
     );
 
-    // Render Tank
-    this.renderTank(tank);
+    // Render Bullets
+    this.renderBullets(bullets);
 
-    // Minimal HUD Overlay (drawn in world coordinates at top of arena)
+    // Render Tanks
+    for (const tank of tanks) {
+      this.renderTank(tank);
+    }
+
+    // Minimal HUD Overlay
+    const playerTank = tanks.find((t) => t.id === 'player') || tanks[0];
+    const dummyTank = tanks.find((t) => t.id !== 'player');
+
     ctx.fillStyle = '#94a3b8';
     ctx.font = '600 14px system-ui, sans-serif';
-    ctx.fillText('MINI TANK DUEL — PHASE 1: FOUNDATION', bounds.x + 20, bounds.y + 32);
+    ctx.fillText('MINI TANK DUEL — PHASE 2: BASIC COMBAT', bounds.x + 20, bounds.y + 30);
 
     ctx.fillStyle = '#64748b';
     ctx.font = '500 12px system-ui, sans-serif';
-    ctx.fillText('CONTROLS: W/S (Drive)  A/D (Steer)', bounds.x + 20, bounds.y + 52);
+    ctx.fillText('CONTROLS: W/S (Drive)  A/D (Steer)  SPACE (Fire)', bounds.x + 20, bounds.y + 48);
+
+    if (playerTank) {
+      const isReady = playerTank.canFire();
+      const cooldownRatio = playerTank.cooldownTimer / BULLET_CONFIG.cooldown;
+      ctx.fillStyle = isReady ? '#38bdf8' : '#eab308';
+      ctx.font = '600 12px system-ui, monospace';
+      const reloadText = isReady ? 'CANNON: READY' : `RELOAD: ${(1 - cooldownRatio).toFixed(1)}s`;
+      ctx.fillText(reloadText, bounds.x + 20, bounds.y + 68);
+    }
+
+    if (dummyTank) {
+      ctx.fillStyle = dummyTank.isAlive() ? '#f43f5e' : '#64748b';
+      ctx.font = '600 12px system-ui, monospace';
+      const dummyText = dummyTank.isAlive()
+        ? `TARGET DUMMY HP: ${dummyTank.hp}/${dummyTank.maxHp}`
+        : 'TARGET DUMMY: DESTROYED';
+      ctx.fillText(dummyText, bounds.x + bounds.width - 240, bounds.y + 30);
+    }
+  }
+
+  private renderBullets(bullets: readonly Bullet[]): void {
+    const ctx = this.ctx;
+    for (const bullet of bullets) {
+      ctx.save();
+      ctx.translate(bullet.x, bullet.y);
+
+      const speed = Math.hypot(bullet.vx, bullet.vy);
+      const angle = Math.atan2(bullet.vy, bullet.vx);
+      ctx.rotate(angle);
+
+      // Tracer tail
+      const tailLength = Math.min(16, speed * 0.03);
+      const gradient = ctx.createLinearGradient(-tailLength, 0, bullet.radius, 0);
+      gradient.addColorStop(0, 'rgba(56, 189, 248, 0)');
+      gradient.addColorStop(1, 'rgba(56, 189, 248, 0.9)');
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(-tailLength, -bullet.radius * 0.7, tailLength, bullet.radius * 1.4);
+
+      // Bullet body
+      ctx.fillStyle = BULLET_CONFIG.color;
+      ctx.beginPath();
+      ctx.arc(0, 0, bullet.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Glowing center core
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, 0, bullet.radius * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
   }
 
   private renderTank(tank: Tank): void {
     const ctx = this.ctx;
     ctx.save();
     ctx.translate(tank.x, tank.y);
+
+    // Draw HP pips above tank (in unrotated world orientation)
+    const pipWidth = 8;
+    const pipHeight = 3;
+    const pipGap = 3;
+    const totalPipsWidth = tank.maxHp * pipWidth + (tank.maxHp - 1) * pipGap;
+    const startPipX = -totalPipsWidth / 2;
+    const pipsY = -PLAYER_CONFIG.width / 2 - 12;
+
+    for (let i = 0; i < tank.maxHp; i++) {
+      const isFilled = i < tank.hp;
+      ctx.fillStyle = isFilled
+        ? tank.id === 'player'
+          ? '#38bdf8'
+          : '#f43f5e'
+        : 'rgba(51, 65, 85, 0.6)';
+      ctx.fillRect(startPipX + i * (pipWidth + pipGap), pipsY, pipWidth, pipHeight);
+    }
+
+    // Now rotate for tank chassis and turret
     ctx.rotate(tank.rotation);
 
     const length = PLAYER_CONFIG.length;
@@ -117,39 +199,53 @@ export class Renderer {
     const halfLen = length / 2;
     const halfWid = width / 2;
 
+    let treadColor: string = PLAYER_CONFIG.treadColor;
+    let bodyColor: string = PLAYER_CONFIG.bodyColor;
+    let accentColor: string = PLAYER_CONFIG.accentColor;
+
+    if (!tank.isAlive()) {
+      treadColor = '#1e293b';
+      bodyColor = '#334155';
+      accentColor = '#64748b';
+    } else if (tank.id !== 'player') {
+      treadColor = '#4c0519';
+      bodyColor = '#be123c';
+      accentColor = '#f43f5e';
+    }
+
     // Treads (left and right dark tracks)
     const treadWidth = 6;
-    ctx.fillStyle = PLAYER_CONFIG.treadColor;
+    ctx.fillStyle = treadColor;
     ctx.fillRect(-halfLen, -halfWid, length, treadWidth);
     ctx.fillRect(-halfLen, halfWid - treadWidth, length, treadWidth);
 
     // Chassis body
-    ctx.fillStyle = PLAYER_CONFIG.bodyColor;
+    ctx.fillStyle = bodyColor;
     ctx.fillRect(-halfLen + 2, -halfWid + treadWidth - 1, length - 4, width - treadWidth * 2 + 2);
 
     // Chassis outline
-    ctx.strokeStyle = PLAYER_CONFIG.accentColor;
+    ctx.strokeStyle = accentColor;
     ctx.lineWidth = 1.5;
     ctx.strokeRect(-halfLen + 2, -halfWid + treadWidth - 1, length - 4, width - treadWidth * 2 + 2);
 
     // Barrel pointing along +X
-    ctx.fillStyle = '#e2e8f0';
+    ctx.fillStyle = !tank.isAlive() ? '#64748b' : '#e2e8f0';
     ctx.fillRect(0, -PLAYER_CONFIG.barrelWidth / 2, PLAYER_CONFIG.barrelLength, PLAYER_CONFIG.barrelWidth);
-    ctx.strokeStyle = PLAYER_CONFIG.accentColor;
+    ctx.strokeStyle = accentColor;
     ctx.lineWidth = 1;
     ctx.strokeRect(0, -PLAYER_CONFIG.barrelWidth / 2, PLAYER_CONFIG.barrelLength, PLAYER_CONFIG.barrelWidth);
 
     // Turret dome
-    ctx.fillStyle = '#0369a1';
+    ctx.fillStyle = bodyColor;
     ctx.beginPath();
     ctx.arc(0, 0, PLAYER_CONFIG.turretRadius, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = PLAYER_CONFIG.accentColor;
+    ctx.strokeStyle = accentColor;
     ctx.lineWidth = 2;
     ctx.stroke();
 
     // Direction indicator chevron
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = accentColor;
     ctx.beginPath();
     ctx.moveTo(halfLen - 4, 0);
     ctx.lineTo(halfLen - 10, -5);

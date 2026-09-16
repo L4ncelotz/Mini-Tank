@@ -14,6 +14,7 @@ const PREVENT_DEFAULT_KEYS: Record<string, true> = {
 
 export class InputManager {
   private activeKeys = new Set<string>();
+  private fireRequested = false;
   private onKeyDownHandler: (e: KeyboardEvent) => void;
   private onKeyUpHandler: (e: KeyboardEvent) => void;
   private onBlurHandler: () => void;
@@ -24,6 +25,9 @@ export class InputManager {
 
     this.onKeyDownHandler = (e: KeyboardEvent) => {
       this.activeKeys.add(e.code);
+      if (e.code === 'Space') {
+        this.fireRequested = true;
+      }
       if (PREVENT_DEFAULT_KEYS[e.code]) {
         e.preventDefault();
       }
@@ -55,15 +59,18 @@ export class InputManager {
     const isReverse = this.isDown('KeyS') || this.isDown('ArrowDown');
     const isLeft = this.isDown('KeyA') || this.isDown('ArrowLeft');
     const isRight = this.isDown('KeyD') || this.isDown('ArrowRight');
+    const fire = this.isDown('Space') || this.fireRequested;
+    this.fireRequested = false;
 
     const forward = (isForward ? 1 : 0) - (isReverse ? 1 : 0);
     const rotate = (isRight ? 1 : 0) - (isLeft ? 1 : 0);
 
-    return { forward, rotate };
+    return { forward, rotate, fire };
   }
 
   public clear(): void {
     this.activeKeys.clear();
+    this.fireRequested = false;
   }
 
   public dispose(): void {

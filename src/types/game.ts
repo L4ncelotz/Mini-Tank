@@ -13,4 +13,17 @@ export interface ArenaBounds {
 export interface TankControls {
   forward: number; // 1 (forward), -1 (reverse), 0 (neutral)
   rotate: number;  // 1 (clockwise/right), -1 (counter-clockwise/left), 0 (neutral)
+  fire: boolean;
+}
+
+export interface BulletState {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  lifetime: number;
+  ownerId: string;
+  damage: number;
+  alive: boolean;
 }

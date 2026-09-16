@@ -1,32 +1,76 @@
-import { PLAYER_CONFIG } from '../config/gameplay';
-import type { TankControls } from '../types/game';
+import { BULLET_CONFIG, PLAYER_CONFIG } from '../config/gameplay';
+import type { TankControls, Vector2D } from '../types/game';
 
 export class Tank {
+  public id: string;
   public x: number;
   public y: number;
   public rotation: number;
   public speed: number;
   public radius: number;
+  public hp: number;
+  public maxHp: number;
+  public cooldownTimer: number;
   public config: typeof PLAYER_CONFIG;
 
   constructor(
     x: number,
     y: number,
     rotation = 0,
+    id = 'player',
+    maxHp = 3,
     config: typeof PLAYER_CONFIG = PLAYER_CONFIG
   ) {
+    this.id = id;
     this.x = x;
     this.y = y;
     this.rotation = rotation;
     this.config = config;
     this.radius = config.radius;
     this.speed = 0;
+    this.maxHp = maxHp;
+    this.hp = maxHp;
+    this.cooldownTimer = 0;
   }
 
+  public isAlive(): boolean {
+    return this.hp > 0;
+  }
+
+  public canFire(): boolean {
+    return this.isAlive() && this.cooldownTimer <= 0;
+  }
+
+  public triggerFire(cooldown: number = BULLET_CONFIG.cooldown): boolean {
+    if (!this.canFire()) return false;
+    this.cooldownTimer = cooldown;
+    return true;
+  }
+
+  public takeDamage(amount: number): boolean {
+    this.hp = Math.max(0, this.hp - amount);
+    return this.hp <= 0;
+  }
+
+  public getBarrelTip(): Vector2D {
+    const barrelDistance = this.config.length / 2 + this.config.barrelLength;
+    return {
+      x: this.x + Math.cos(this.rotation) * barrelDistance,
+      y: this.y + Math.sin(this.rotation) * barrelDistance,
+    };
+  }
   public update(dt: number, controls: TankControls): void {
+    if (this.cooldownTimer > 0) {
+      this.cooldownTimer = Math.max(0, this.cooldownTimer - dt);
+    }
+
+    if (!this.isAlive()) {
+      this.speed = 0;
+      return;
+    }
+
     this.rotation += controls.rotate * this.config.rotationSpeed * dt;
     this.rotation = Math.atan2(Math.sin(this.rotation), Math.cos(this.rotation));
-
     let targetSpeed = 0;
     if (controls.forward > 0) {
       targetSpeed = this.config.forwardSpeed;
