@@ -1,6 +1,7 @@
 import { ARENA_CONFIG, BULLET_CONFIG, PLAYER_CONFIG } from '../config/gameplay';
 import type { Bullet } from '../entities/Bullet';
 import type { Tank } from '../entities/Tank';
+import type { BounceImpact } from '../systems/CombatSystem';
 import type { ArenaBounds } from '../types/game';
 
 export class Renderer {
@@ -66,7 +67,12 @@ export class Renderer {
     this.offsetY = Math.floor((viewportHeight - ARENA_CONFIG.height * this.scale) / 2);
   }
 
-  public render(tanks: readonly Tank[], bullets: readonly Bullet[], bounds: ArenaBounds): void {
+  public render(
+    tanks: readonly Tank[],
+    bullets: readonly Bullet[],
+    bounds: ArenaBounds,
+    bounceImpacts: readonly BounceImpact[] = []
+  ): void {
     const ctx = this.ctx;
     const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
 
@@ -113,6 +119,9 @@ export class Renderer {
       bounds.height - ARENA_CONFIG.wallThickness
     );
 
+    // Render Ricochet Bounce Impacts
+    this.renderBounceImpacts(bounceImpacts);
+
     // Render Bullets
     this.renderBullets(bullets);
 
@@ -127,7 +136,7 @@ export class Renderer {
 
     ctx.fillStyle = '#94a3b8';
     ctx.font = '600 14px system-ui, sans-serif';
-    ctx.fillText('MINI TANK DUEL — PHASE 2: BASIC COMBAT', bounds.x + 20, bounds.y + 30);
+    ctx.fillText('MINI TANK DUEL — PHASE 3: RICOCHET', bounds.x + 20, bounds.y + 30);
 
     ctx.fillStyle = '#64748b';
     ctx.font = '500 12px system-ui, sans-serif';
@@ -152,6 +161,33 @@ export class Renderer {
     }
   }
 
+  private renderBounceImpacts(impacts: readonly BounceImpact[]): void {
+    const ctx = this.ctx;
+    for (const impact of impacts) {
+      const progress = 1 - impact.timer / impact.maxTime;
+      const alpha = Math.max(0, 1 - progress);
+      const radius = 6 + progress * 22;
+
+      ctx.save();
+      ctx.translate(impact.x, impact.y);
+
+      // Expanding flash ring
+      ctx.strokeStyle = `rgba(245, 158, 11, ${alpha})`;
+      ctx.lineWidth = 2.5 * alpha;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Inner flash spark
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.9})`;
+      ctx.beginPath();
+      ctx.arc(0, 0, 4 * (1 - progress), 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+
   private renderBullets(bullets: readonly Bullet[]): void {
     const ctx = this.ctx;
     for (const bullet of bullets) {
@@ -162,17 +198,33 @@ export class Renderer {
       const angle = Math.atan2(bullet.vy, bullet.vx);
       ctx.rotate(angle);
 
+      const isBounced = bullet.bounces > 0;
+      const bulletColor = isBounced ? BULLET_CONFIG.bouncedColor : BULLET_CONFIG.color;
+
       // Tracer tail
-      const tailLength = Math.min(16, speed * 0.03);
+      const tailLength = Math.min(isBounced ? 24 : 16, speed * 0.04);
       const gradient = ctx.createLinearGradient(-tailLength, 0, bullet.radius, 0);
-      gradient.addColorStop(0, 'rgba(56, 189, 248, 0)');
-      gradient.addColorStop(1, 'rgba(56, 189, 248, 0.9)');
+      if (isBounced) {
+        gradient.addColorStop(0, 'rgba(245, 158, 11, 0)');
+        gradient.addColorStop(1, 'rgba(245, 158, 11, 0.9)');
+      } else {
+        gradient.addColorStop(0, 'rgba(56, 189, 248, 0)');
+        gradient.addColorStop(1, 'rgba(56, 189, 248, 0.9)');
+      }
 
       ctx.fillStyle = gradient;
       ctx.fillRect(-tailLength, -bullet.radius * 0.7, tailLength, bullet.radius * 1.4);
 
+      // Outer glow for bounced bullet
+      if (isBounced) {
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.35)';
+        ctx.beginPath();
+        ctx.arc(0, 0, bullet.radius * 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       // Bullet body
-      ctx.fillStyle = BULLET_CONFIG.color;
+      ctx.fillStyle = bulletColor;
       ctx.beginPath();
       ctx.arc(0, 0, bullet.radius, 0, Math.PI * 2);
       ctx.fill();

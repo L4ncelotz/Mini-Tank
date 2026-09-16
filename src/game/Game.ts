@@ -64,7 +64,12 @@ export class Game {
   }
 
   public render(): void {
-    this.renderer.render(this.getTanks(), this.combat.bullets, this.arenaBounds);
+    this.renderer.render(
+      this.getTanks(),
+      this.combat.bullets,
+      this.arenaBounds,
+      this.combat.bounceImpacts
+    );
   }
   public start(): void {
     this.loop.start();

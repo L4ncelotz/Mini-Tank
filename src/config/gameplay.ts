@@ -33,8 +33,10 @@ export const LOOP_CONFIG = {
 export const BULLET_CONFIG = {
   speed: 420,
   cooldown: 1.0,
-  lifetime: 3.0,
+  lifetime: 3.5,
   radius: 4,
   damage: 1,
+  maxBounces: 1,
   color: '#38bdf8',
+  bouncedColor: '#f59e0b',
 } as const;

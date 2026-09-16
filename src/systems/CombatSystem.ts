@@ -9,8 +9,18 @@ export interface CombatHitEvent {
   damage: number;
 }
 
+export interface BounceImpact {
+  x: number;
+  y: number;
+  normalX: number;
+  normalY: number;
+  timer: number;
+  maxTime: number;
+}
+
 export class CombatSystem {
   public bullets: Bullet[] = [];
+  public bounceImpacts: BounceImpact[] = [];
 
   public fireBullet(tank: Tank): Bullet | null {
     if (!tank.triggerFire()) {
@@ -26,12 +36,29 @@ export class CombatSystem {
   public update(dt: number, bounds: ArenaBounds, tanks: Tank[]): CombatHitEvent[] {
     const hits: CombatHitEvent[] = [];
 
+    // Update existing bounce impacts
+    for (const impact of this.bounceImpacts) {
+      impact.timer -= dt;
+    }
+    this.bounceImpacts = this.bounceImpacts.filter((i) => i.timer > 0);
+
     for (const bullet of this.bullets) {
       bullet.update(dt);
       if (!bullet.alive) continue;
 
-      // Check wall collision
-      CollisionSystem.resolveBulletWallCollision(bullet, bounds);
+      // Check wall collision and ricochet
+      const wallCol = CollisionSystem.resolveBulletWallCollision(bullet, bounds);
+      if (wallCol?.bounced) {
+        this.bounceImpacts.push({
+          x: wallCol.impactX,
+          y: wallCol.impactY,
+          normalX: wallCol.normalX,
+          normalY: wallCol.normalY,
+          timer: 0.2,
+          maxTime: 0.2,
+        });
+      }
+
       if (!bullet.alive) continue;
 
       // Check tank collisions
@@ -57,5 +84,6 @@ export class CombatSystem {
 
   public clear(): void {
     this.bullets = [];
+    this.bounceImpacts = [];
   }
 }

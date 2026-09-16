@@ -50,4 +50,34 @@ describe('Bullet Entity', () => {
     bullet.update(0.5);
     expect(bullet.x).toBe(xBefore);
   });
+
+  it('tracks bounces and enforces maximum bounces', () => {
+    expect(bullet.bounces).toBe(0);
+    expect(bullet.maxBounces).toBe(1);
+    expect(bullet.canBounce()).toBe(true);
+
+    // Bounce against right wall (normal = -1, 0)
+    const firstBounceSuccess = bullet.bounce(-1, 0);
+    expect(firstBounceSuccess).toBe(true);
+    expect(bullet.bounces).toBe(1);
+    expect(bullet.canBounce()).toBe(false);
+    expect(bullet.vx).toBeCloseTo(-BULLET_CONFIG.speed, 4);
+    expect(bullet.alive).toBe(true);
+
+    // Disallowed second bounce
+    const secondBounceSuccess = bullet.bounce(1, 0);
+    expect(secondBounceSuccess).toBe(false);
+    expect(bullet.alive).toBe(false);
+  });
+
+  it('accurately reflects velocity on horizontal walls', () => {
+    const angledBullet = new Bullet(100, 100, Math.PI / 4, 'player'); // 45 deg down-right
+    const initialVx = angledBullet.vx;
+    const initialVy = angledBullet.vy;
+
+    // Bounce off bottom wall (normal = 0, -1)
+    angledBullet.bounce(0, -1);
+    expect(angledBullet.vx).toBeCloseTo(initialVx, 4);
+    expect(angledBullet.vy).toBeCloseTo(-initialVy, 4);
+  });
 });

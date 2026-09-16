@@ -51,19 +51,59 @@ describe('CombatSystem', () => {
     expect(combat.bullets.length).toBe(2);
   });
 
-  it('destroys bullet upon colliding with arena wall', () => {
+  it('ricochets bullet on first wall collision and destroys it on second wall collision', () => {
     // Fire bullet towards right wall
     const bullet = combat.fireBullet(playerTank)!;
     expect(bullet).not.toBeNull();
+    expect(bullet.vx).toBeGreaterThan(0);
 
-    // Fast-forward updates until bullet hits the right wall (x >= 800 - radius)
-    for (let i = 0; i < 120; i++) {
+    // Advance until first wall collision (~85 frames to travel 600px at speed 420)
+    for (let i = 0; i < 90; i++) {
+      combat.update(1 / 60, bounds, [playerTank]);
+      if (bullet.bounces === 1) break;
+    }
+
+    // First bounce: bullet reflected and alive
+    expect(bullet.bounces).toBe(1);
+    expect(bullet.alive).toBe(true);
+    expect(bullet.vx).toBeLessThan(0); // Heading left
+    expect(combat.bounceImpacts.length).toBeGreaterThan(0); // Recorded visual impact
+
+    // Advance until bullet travels across the arena and hits opposite (left) wall
+    for (let i = 0; i < 150; i++) {
       combat.update(1 / 60, bounds, [playerTank]);
     }
 
-    // Bullet should have hit wall and been removed
+    // Second wall collision: bullet destroyed and removed
     expect(combat.bullets.length).toBe(0);
     expect(bullet.alive).toBe(false);
+  });
+
+  it('allows ricocheted bullet to hit an enemy tank and apply damage', () => {
+    // Position player to shoot up at 45 degrees
+    playerTank.x = 200;
+    playerTank.y = 150;
+    playerTank.rotation = -Math.PI / 4; // up-right
+    // Position target along the reflected path
+    targetTank.x = 490;
+    targetTank.y = 150;
+    expect(targetTank.hp).toBe(3);
+
+    const bullet = combat.fireBullet(playerTank)!;
+    expect(bullet).not.toBeNull();
+
+    // Update until bullet bounces off top wall and hits target
+    let hitRecorded = false;
+    for (let i = 0; i < 60; i++) {
+      const hits = combat.update(1 / 60, bounds, [playerTank, targetTank]);
+      if (hits.length > 0) {
+        hitRecorded = true;
+        break;
+      }
+    }
+
+    expect(hitRecorded).toBe(true);
+    expect(targetTank.hp).toBe(2);
   });
 
   it('detects bullet hitting an enemy tank and applies damage', () => {

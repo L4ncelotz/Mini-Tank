@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 2 — Basic Combat complete.
+Phase 3 — Ricochet complete.
 
 ## Done
 
@@ -32,13 +32,22 @@ Phase 2 — Basic Combat complete.
   - [x] Write unit tests for combat and bullets
   - [x] Run typecheck and production build
   - [x] Verify firing, cooldown, and collisions in browser
+- [x] Phase 3 — Ricochet
+  - [x] Add maxBounces to bullet configuration and types
+  - [x] Update Bullet entity with bounces and maxBounces
+  - [x] Implement deterministic wall ricochet in CollisionSystem
+  - [x] Add visual bounce feedback to Renderer
+  - [x] Integrate bounce event handling in CombatSystem and Game
+  - [x] Write unit tests for ricochet reflection and limits
+  - [x] Run typecheck and production build
+  - [x] Verify ricochet reflection, feedback, and one-bounce limit in browser
 
 ## In Progress
 
 None
+
 ## Next
 
-- [ ] Phase 3 — Ricochet
 - [ ] Phase 4 — Match System
 - [ ] Phase 5 — Basic AI
 - [ ] Phase 6 — Defensive and Tactical AI

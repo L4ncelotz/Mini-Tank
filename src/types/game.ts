@@ -25,5 +25,16 @@ export interface BulletState {
   lifetime: number;
   ownerId: string;
   damage: number;
+  bounces: number;
+  maxBounces: number;
   alive: boolean;
+}
+
+export interface RicochetEvent {
+  x: number;
+  y: number;
+  normalX: number;
+  normalY: number;
+  bulletId: string;
+  bounces: number;
 }

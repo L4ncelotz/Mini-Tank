@@ -11,6 +11,8 @@ export class Bullet {
   public maxLifetime: number;
   public ownerId: string;
   public damage: number;
+  public bounces: number;
+  public maxBounces: number;
   public alive: boolean;
 
   constructor(
@@ -21,7 +23,8 @@ export class Bullet {
     speed: number = BULLET_CONFIG.speed,
     radius: number = BULLET_CONFIG.radius,
     lifetime: number = BULLET_CONFIG.lifetime,
-    damage: number = BULLET_CONFIG.damage
+    damage: number = BULLET_CONFIG.damage,
+    maxBounces: number = BULLET_CONFIG.maxBounces
   ) {
     this.x = x;
     this.y = y;
@@ -33,7 +36,26 @@ export class Bullet {
     this.maxLifetime = lifetime;
     this.ownerId = ownerId;
     this.damage = damage;
+    this.bounces = 0;
+    this.maxBounces = maxBounces;
     this.alive = true;
+  }
+
+  public canBounce(): boolean {
+    return this.bounces < this.maxBounces;
+  }
+
+  public bounce(normalX: number, normalY: number): boolean {
+    if (!this.canBounce()) {
+      this.destroy();
+      return false;
+    }
+
+    const dot = this.vx * normalX + this.vy * normalY;
+    this.vx = this.vx - 2 * dot * normalX;
+    this.vy = this.vy - 2 * dot * normalY;
+    this.bounces++;
+    return true;
   }
 
   public update(dt: number): void {

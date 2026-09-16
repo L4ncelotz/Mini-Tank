@@ -39,20 +39,74 @@ export class CollisionSystem {
     );
   }
 
-  public static resolveBulletWallCollision(bullet: Bullet, bounds: ArenaBounds): boolean {
-    if (!bullet.alive) return false;
+  public static resolveBulletWallCollision(
+    bullet: Bullet,
+    bounds: ArenaBounds
+  ): {
+    hit: boolean;
+    bounced: boolean;
+    normalX: number;
+    normalY: number;
+    impactX: number;
+    impactY: number;
+  } | null {
+    if (!bullet.alive) return null;
 
     const minX = bounds.x + bullet.radius;
     const maxX = bounds.x + bounds.width - bullet.radius;
     const minY = bounds.y + bullet.radius;
     const maxY = bounds.y + bounds.height - bullet.radius;
 
-    if (bullet.x <= minX || bullet.x >= maxX || bullet.y <= minY || bullet.y >= maxY) {
-      bullet.destroy();
-      return true;
+    let hit = false;
+    let normalX = 0;
+    let normalY = 0;
+
+    if (bullet.x <= minX && bullet.vx < 0) {
+      bullet.x = minX;
+      normalX = 1;
+      hit = true;
+    } else if (bullet.x >= maxX && bullet.vx > 0) {
+      bullet.x = maxX;
+      normalX = -1;
+      hit = true;
     }
 
-    return false;
+    if (bullet.y <= minY && bullet.vy < 0) {
+      bullet.y = minY;
+      normalY = 1;
+      hit = true;
+    } else if (bullet.y >= maxY && bullet.vy > 0) {
+      bullet.y = maxY;
+      normalY = -1;
+      hit = true;
+    }
+
+    if (!hit) return null;
+
+    const impactX = bullet.x;
+    const impactY = bullet.y;
+
+    if (bullet.canBounce()) {
+      bullet.bounce(normalX, normalY);
+      return {
+        hit: true,
+        bounced: true,
+        normalX,
+        normalY,
+        impactX,
+        impactY,
+      };
+    } else {
+      bullet.destroy();
+      return {
+        hit: true,
+        bounced: false,
+        normalX,
+        normalY,
+        impactX,
+        impactY,
+      };
+    }
   }
 
   public static checkBulletTankCollision(bullet: Bullet, tank: Tank): boolean {
