@@ -51,3 +51,32 @@ export interface MatchScore {
   roundWinner: string | null;
   matchWinner: string | null;
 }
+
+export interface Wall {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color?: string;
+}
+
+export interface SpawnPoint {
+  x: number;
+  y: number;
+  rotation: number;
+}
+
+export type MapId = 'open_arena' | 'crossfire' | 'corridor';
+
+export interface MapData {
+  id: MapId;
+  name: string;
+  description: string;
+  bounds: ArenaBounds;
+  walls: Wall[];
+  spawns: {
+    player: SpawnPoint;
+    opponent: SpawnPoint;
+  };
+}

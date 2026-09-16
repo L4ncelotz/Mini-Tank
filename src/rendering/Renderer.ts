@@ -3,7 +3,8 @@ import type { TacticalState } from '../ai/AIConfig';
 import type { Bullet } from '../entities/Bullet';
 import type { Tank } from '../entities/Tank';
 import type { BounceImpact } from '../systems/CombatSystem';
-import type { ArenaBounds, MatchScore } from '../types/game';
+import type { ArenaBounds, MatchScore, Wall } from '../types/game';
+
 
 export class Renderer {
   public canvas: HTMLCanvasElement;
@@ -72,9 +73,11 @@ export class Renderer {
     tanks: readonly Tank[],
     bullets: readonly Bullet[],
     bounds: ArenaBounds,
+    walls: readonly Wall[] = [],
     bounceImpacts: readonly BounceImpact[] = [],
     score?: MatchScore,
-    aiState?: TacticalState
+    aiState?: TacticalState,
+    mapName?: string
   ): void {
     const ctx = this.ctx;
     const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
@@ -111,6 +114,9 @@ export class Renderer {
     }
     ctx.stroke();
 
+    // Internal Obstacle Walls
+    this.renderWalls(walls);
+
     // Arena boundary border walls
     ctx.strokeStyle = ARENA_CONFIG.borderColor;
     ctx.lineWidth = ARENA_CONFIG.wallThickness;
@@ -137,11 +143,17 @@ export class Renderer {
     const opponentTank = tanks.find((t) => t.id !== 'player');
 
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText('MINI TANK DUEL — PHASE 6: DEFENSIVE & TACTICAL AI', bounds.x + 20, bounds.y + 30);
+    ctx.font = '600 14px system-ui, sans-serif';
+    ctx.fillText('MINI TANK DUEL — PHASE 7: ARENA MAPS', bounds.x + 20, bounds.y + 30);
 
     ctx.fillStyle = '#64748b';
     ctx.font = '500 12px system-ui, sans-serif';
-    ctx.fillText('CONTROLS: W/S (Drive)  A/D (Steer)  SPACE (Fire)  F (Fullscreen)  R (Restart)', bounds.x + 20, bounds.y + 48);
+    ctx.fillText('CONTROLS: W/S (Drive)  A/D (Steer)  SPACE (Fire)  M (Next Map)  F (Fullscreen)  R (Restart)', bounds.x + 20, bounds.y + 48);
+
+    // Map Badge
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = '700 12px system-ui, sans-serif';
+    ctx.fillText(`MAP: ${(mapName || 'OPEN ARENA').toUpperCase()}`, bounds.x + 20, bounds.y + 68);
 
     if (playerTank) {
       const isReady = playerTank.canFire();
@@ -149,7 +161,7 @@ export class Renderer {
       ctx.fillStyle = isReady ? '#38bdf8' : '#eab308';
       ctx.font = '600 12px system-ui, monospace';
       const reloadText = isReady ? 'CANNON: READY' : `RELOAD: ${(1 - cooldownRatio).toFixed(1)}s`;
-      ctx.fillText(reloadText, bounds.x + 20, bounds.y + 68);
+      ctx.fillText(reloadText, bounds.x + 190, bounds.y + 68);
     }
 
     // AI Opponent Status (Top-Right)
@@ -166,6 +178,25 @@ export class Renderer {
     if (score) {
       this.renderScoreboard(score, bounds);
       this.renderStateBanner(score, bounds);
+    }
+  }
+
+  private renderWalls(walls: readonly Wall[]): void {
+    const ctx = this.ctx;
+    for (const wall of walls) {
+      // Wall fill
+      ctx.fillStyle = wall.color || '#1e293b';
+      ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+
+      // Wall border
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
+
+      // Inner tactical bevel accent lines
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(wall.x + 3, wall.y + 3, wall.width - 6, wall.height - 6);
     }
   }
 

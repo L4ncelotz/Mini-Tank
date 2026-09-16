@@ -1,4 +1,4 @@
-import { ARENA_CONFIG, MATCH_CONFIG } from '../config/gameplay';
+import { MATCH_CONFIG } from '../config/gameplay';
 import { Tank } from '../entities/Tank';
 import { GameLoop } from './GameLoop';
 import { InputManager } from '../input/InputManager';
@@ -7,9 +7,11 @@ import { CollisionSystem } from '../systems/CollisionSystem';
 import { CombatSystem } from '../systems/CombatSystem';
 import { RoundManager } from '../systems/RoundManager';
 import { AIController } from '../ai/AIController';
-import type { ArenaBounds } from '../types/game';
+import { Arena } from '../maps/Arena';
+import type { ArenaBounds, MapId } from '../types/game';
 
 export class Game {
+  public arena: Arena;
   public arenaBounds: ArenaBounds;
   public playerTank: Tank;
   public opponentTank: Tank | null;
@@ -34,22 +36,28 @@ export class Game {
     this.opponentTank = tank;
   }
 
-  constructor(canvas: HTMLCanvasElement, spawnOpponent = true) {
-    this.arenaBounds = {
-      x: 0,
-      y: 0,
-      width: ARENA_CONFIG.width,
-      height: ARENA_CONFIG.height,
-    };
+  constructor(canvas: HTMLCanvasElement, spawnOpponent = true, initialMapId: MapId = 'open_arena') {
+    this.arena = new Arena(initialMapId);
+    this.arenaBounds = this.arena.bounds;
 
-    this.spawnX = this.arenaBounds.width * 0.25;
-    this.spawnY = this.arenaBounds.height / 2;
-    this.playerTank = new Tank(this.spawnX, this.spawnY, 0, 'player');
+    this.spawnX = this.arena.spawns.player.x;
+    this.spawnY = this.arena.spawns.player.y;
+    this.playerTank = new Tank(
+      this.spawnX,
+      this.spawnY,
+      this.arena.spawns.player.rotation,
+      'player'
+    );
 
-    this.opponentSpawnX = this.arenaBounds.width * 0.75;
-    this.opponentSpawnY = this.arenaBounds.height / 2;
+    this.opponentSpawnX = this.arena.spawns.opponent.x;
+    this.opponentSpawnY = this.arena.spawns.opponent.y;
     if (spawnOpponent) {
-      this.opponentTank = new Tank(this.opponentSpawnX, this.opponentSpawnY, Math.PI, 'ai');
+      this.opponentTank = new Tank(
+        this.opponentSpawnX,
+        this.opponentSpawnY,
+        this.arena.spawns.opponent.rotation,
+        'ai'
+      );
     } else {
       this.opponentTank = null;
     }
@@ -71,10 +79,29 @@ export class Game {
     );
   }
 
+  public switchMap(mapId?: MapId): void {
+    if (mapId) {
+      this.arena.setMap(mapId);
+    } else {
+      this.arena.nextMap();
+    }
+    this.arenaBounds = this.arena.bounds;
+    this.spawnX = this.arena.spawns.player.x;
+    this.spawnY = this.arena.spawns.player.y;
+    this.opponentSpawnX = this.arena.spawns.opponent.x;
+    this.opponentSpawnY = this.arena.spawns.opponent.y;
+    this.resetRound();
+    this.roundManager.resetMatch();
+  }
+
   public resetRound(): void {
-    this.playerTank.reset(this.spawnX, this.spawnY, 0);
+    this.playerTank.reset(this.spawnX, this.spawnY, this.arena.spawns.player.rotation);
     if (this.opponentTank) {
-      this.opponentTank.reset(this.opponentSpawnX, this.opponentSpawnY, Math.PI);
+      this.opponentTank.reset(
+        this.opponentSpawnX,
+        this.opponentSpawnY,
+        this.arena.spawns.opponent.rotation
+      );
     }
     this.aiController.reset();
     this.combat.clear();
@@ -82,6 +109,11 @@ export class Game {
   }
 
   public fixedUpdate(dt: number): void {
+    if (this.input.isMapSwitchRequested()) {
+      this.switchMap();
+      return;
+    }
+
     if (this.roundManager.isMatchOver()) {
       if (this.input.isRestartRequested()) {
         this.roundManager.resetMatch();
@@ -95,7 +127,11 @@ export class Game {
       // Player update
       const controls = this.input.getControls();
       this.playerTank.update(dt, controls);
-      CollisionSystem.resolveTankBoundaryCollision(this.playerTank, this.arenaBounds);
+      CollisionSystem.resolveTankWallCollisions(
+        this.playerTank,
+        this.arena.walls,
+        this.arenaBounds
+      );
 
       if (controls.fire) {
         this.combat.fireBullet(this.playerTank);
@@ -108,10 +144,15 @@ export class Game {
           this.opponentTank,
           this.playerTank,
           this.arenaBounds,
-          this.combat.bullets
+          this.combat.bullets,
+          this.arena.walls
         );
         this.opponentTank.update(dt, aiControls);
-        CollisionSystem.resolveTankBoundaryCollision(this.opponentTank, this.arenaBounds);
+        CollisionSystem.resolveTankWallCollisions(
+          this.opponentTank,
+          this.arena.walls,
+          this.arenaBounds
+        );
 
         if (aiControls.fire) {
           this.combat.fireBullet(this.opponentTank);
@@ -125,7 +166,7 @@ export class Game {
     }
 
     const tanks = this.getTanks();
-    this.combat.update(dt, this.arenaBounds, tanks);
+    this.combat.update(dt, this.arenaBounds, tanks, this.arena.walls);
   }
 
   public getTanks(): Tank[] {
@@ -137,9 +178,11 @@ export class Game {
       this.getTanks(),
       this.combat.bullets,
       this.arenaBounds,
+      this.arena.walls,
       this.combat.bounceImpacts,
       this.roundManager.getScore(),
-      this.aiController.state
+      this.aiController.state,
+      this.arena.currentMap.name
     );
   }
 

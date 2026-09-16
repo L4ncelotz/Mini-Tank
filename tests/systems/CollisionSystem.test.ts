@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { CollisionSystem } from '../../src/systems/CollisionSystem';
 import { Tank } from '../../src/entities/Tank';
 import { Bullet } from '../../src/entities/Bullet';
-import type { ArenaBounds } from '../../src/types/game';
+import type { ArenaBounds, Wall } from '../../src/types/game';
+
 
 describe('CollisionSystem', () => {
   const bounds: ArenaBounds = {
@@ -112,5 +113,57 @@ describe('CollisionSystem', () => {
     const bottomResult = CollisionSystem.resolveBulletWallCollision(bulletBottom, bounds);
     expect(bottomResult!.bounced).toBe(true);
     expect(bulletBottom.vy).toBeLessThan(0); // Now moving up (-Y)
+  });
+
+  it('resolves tank collisions against internal rectangular walls by sliding', () => {
+    const walls: Wall[] = [
+      { id: 'pillar', x: 300, y: 200, width: 100, height: 100 },
+    ];
+
+    // Tank penetrates left face of wall (tank.x = 295, wall starts at 300, radius = 16)
+    const tank = new Tank(295, 250, 0);
+    const collided = CollisionSystem.resolveTankWallCollisions(tank, walls, bounds);
+
+    expect(collided).toBe(true);
+    // Tank should be pushed out to x <= 300 - 16 = 284
+    expect(tank.x).toBeLessThanOrEqual(284.01);
+    expect(tank.y).toBe(250);
+  });
+
+  it('reflects bullet off internal obstacle wall', () => {
+    const walls: Wall[] = [
+      { id: 'center-block', x: 400, y: 200, width: 100, height: 100 },
+    ];
+
+    // Bullet moving right (+X) enters left face of wall at (398, 250)
+    const bullet = new Bullet(398, 250, 0, 'player', 420);
+    expect(bullet.vx).toBeGreaterThan(0);
+
+    const result = CollisionSystem.resolveBulletWallCollisions(bullet, walls, bounds);
+    expect(result).not.toBeNull();
+    expect(result!.hit).toBe(true);
+    expect(result!.bounced).toBe(true);
+    expect(bullet.bounces).toBe(1);
+    expect(bullet.vx).toBeLessThan(0); // Reversed velocity heading away from wall
+    expect(bullet.alive).toBe(true);
+  });
+
+  it('destroys bullet on second obstacle wall collision', () => {
+    const walls: Wall[] = [
+      { id: 'wall1', x: 400, y: 200, width: 100, height: 100 },
+      { id: 'wall2', x: 200, y: 200, width: 100, height: 100 },
+    ];
+
+    const bullet = new Bullet(398, 250, 0, 'player', 420);
+    CollisionSystem.resolveBulletWallCollisions(bullet, walls, bounds);
+    expect(bullet.bounces).toBe(1);
+
+    // Move to second wall
+    bullet.x = 302;
+    bullet.vx = -420; // moving left into right face of wall2
+    const secondResult = CollisionSystem.resolveBulletWallCollisions(bullet, walls, bounds);
+    expect(secondResult).not.toBeNull();
+    expect(secondResult!.bounced).toBe(false);
+    expect(bullet.alive).toBe(false);
   });
 });

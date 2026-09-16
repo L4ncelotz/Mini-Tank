@@ -1,9 +1,9 @@
 import { BULLET_CONFIG } from '../config/gameplay';
 import { DEFAULT_AI_CONFIG } from './AIConfig';
 import type { AIConfig, TacticalState } from './AIConfig';
-import type { Bullet } from '../entities/Bullet';
 import type { Tank } from '../entities/Tank';
-import type { ArenaBounds, TankControls } from '../types/game';
+import type { Bullet } from '../entities/Bullet';
+import type { ArenaBounds, TankControls, Wall } from '../types/game';
 
 export class AIController {
   public config: AIConfig;
@@ -39,13 +39,13 @@ export class AIController {
     aiTank: Tank,
     playerTank: Tank,
     bounds: ArenaBounds,
-    bullets: readonly Bullet[] = []
+    bullets: readonly Bullet[] = [],
+    walls: Wall[] = []
   ): TankControls {
     if (!aiTank.isAlive() || !playerTank.isAlive()) {
       this.currentControls = { forward: 0, rotate: 0, fire: false };
       return this.currentControls;
     }
-
     // Update estimated player cooldown
     this.updatePlayerCooldownEstimate(dt, playerTank, bullets);
 
@@ -76,7 +76,7 @@ export class AIController {
     // Normal tactical state evaluation on reaction delay timer
     this.decisionTimer -= dt;
     if (this.decisionTimer <= 0) {
-      this.evaluateTactics(aiTank, playerTank, bounds);
+      this.evaluateTactics(aiTank, playerTank, bounds, walls);
       this.decisionTimer = this.config.reactionDelay;
     }
 
@@ -172,7 +172,12 @@ export class AIController {
     this.currentControls.fire = Math.abs(aimDiff) <= this.config.aimThreshold && aiTank.canFire();
   }
 
-  private evaluateTactics(aiTank: Tank, playerTank: Tank, bounds: ArenaBounds): void {
+  private evaluateTactics(
+    aiTank: Tank,
+    playerTank: Tank,
+    bounds: ArenaBounds,
+    walls: Wall[] = []
+  ): void {
     const dx = playerTank.x - aiTank.x;
     const dy = playerTank.y - aiTank.y;
     this.distanceToTarget = Math.hypot(dx, dy);
@@ -187,12 +192,28 @@ export class AIController {
     const nearTop = aiTank.y < bounds.y + buffer;
     const nearBottom = aiTank.y > bounds.y + bounds.height - buffer;
 
-    const isNearWall = nearLeft || nearRight || nearTop || nearBottom;
+    let nearObstacleWall = false;
+    for (const wall of walls) {
+      const closestX = Math.max(wall.x, Math.min(aiTank.x, wall.x + wall.width));
+      const closestY = Math.max(wall.y, Math.min(aiTank.y, wall.y + wall.height));
+      const dist = Math.hypot(aiTank.x - closestX, aiTank.y - closestY);
+      if (dist < buffer) {
+        const toWallX = closestX - aiTank.x;
+        const toWallY = closestY - aiTank.y;
+        if (headingX * toWallX + headingY * toWallY > 0) {
+          nearObstacleWall = true;
+          break;
+        }
+      }
+    }
+
+    const isNearWall = nearLeft || nearRight || nearTop || nearBottom || nearObstacleWall;
     const headingIntoWall =
       (nearLeft && headingX < 0) ||
       (nearRight && headingX > 0) ||
       (nearTop && headingY < 0) ||
-      (nearBottom && headingY > 0);
+      (nearBottom && headingY > 0) ||
+      nearObstacleWall;
 
     // 1. Reposition State: boundary avoidance / corner escape
     if (headingIntoWall) {
@@ -205,7 +226,6 @@ export class AIController {
       this.currentControls.fire = false;
       return;
     }
-
     // 2. Pressure State: Player is reloading and AI is ready to punish
     const playerIsReloading = this.estimatedPlayerCooldown > 0.35;
     const aiIsArmed = aiTank.canFire();

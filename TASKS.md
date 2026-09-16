@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 6 — Defensive and Tactical AI complete.
+Phase 7 — Arena Maps complete.
 
 ## Done
 
@@ -71,6 +71,17 @@ Phase 6 — Defensive and Tactical AI complete.
   - [x] Write unit tests for defensive and tactical AI states
   - [x] Run typecheck and production build
   - [x] Verify defensive dodging, pressure windows, and readable state transitions in browser
+- [x] Phase 7 — Arena Maps
+  - [x] Define map types and arenaData with 3 handcrafted maps
+  - [x] Implement Arena class managing geometry and spawns
+  - [x] Extend CollisionSystem with tank-wall AABB collision resolution
+  - [x] Extend CollisionSystem with bullet-wall AABB reflection and normals
+  - [x] Update CombatSystem and AIController for obstacle walls
+  - [x] Update Renderer to draw map wall geometry and name
+  - [x] Integrate map selection into Game coordinator with M key
+  - [x] Write unit tests for maps and internal wall collisions
+  - [x] Run typecheck and production build
+  - [x] Verify all 3 maps, spawn points, and ricochets off internal walls in browser
 
 ## In Progress
 
@@ -78,7 +89,6 @@ None
 
 ## Next
 
-- [ ] Phase 7 — Arena Maps
 - [ ] Phase 8 — Dash and Game Feel
 - [ ] Phase 9 — Audio
 - [ ] Phase 10 — Ranked Bots

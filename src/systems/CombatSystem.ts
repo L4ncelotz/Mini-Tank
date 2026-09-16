@@ -1,6 +1,6 @@
 import { Bullet } from '../entities/Bullet';
 import type { Tank } from '../entities/Tank';
-import type { ArenaBounds } from '../types/game';
+import type { ArenaBounds, Wall } from '../types/game';
 import { CollisionSystem } from './CollisionSystem';
 
 export interface CombatHitEvent {
@@ -33,7 +33,12 @@ export class CombatSystem {
     return bullet;
   }
 
-  public update(dt: number, bounds: ArenaBounds, tanks: Tank[]): CombatHitEvent[] {
+  public update(
+    dt: number,
+    bounds: ArenaBounds,
+    tanks: Tank[],
+    walls: Wall[] = []
+  ): CombatHitEvent[] {
     const hits: CombatHitEvent[] = [];
 
     // Update existing bounce impacts
@@ -46,8 +51,8 @@ export class CombatSystem {
       bullet.update(dt);
       if (!bullet.alive) continue;
 
-      // Check wall collision and ricochet
-      const wallCol = CollisionSystem.resolveBulletWallCollision(bullet, bounds);
+      // Check internal and boundary wall collisions and ricochet
+      const wallCol = CollisionSystem.resolveBulletWallCollisions(bullet, walls, bounds);
       if (wallCol?.bounced) {
         this.bounceImpacts.push({
           x: wallCol.impactX,
