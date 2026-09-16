@@ -1,11 +1,11 @@
 export const ARENA_CONFIG = {
   width: 1440,
   height: 900,
-  borderColor: '#38bdf8',
-  backgroundColor: '#0f172a',
-  gridColor: '#1e293b',
+  borderColor: '#00f0ff',
+  backgroundColor: '#070c18',
+  gridColor: '#111c35',
   gridSize: 48,
-  wallThickness: 10,
+  wallThickness: 12,
 } as const;
 
 export const PLAYER_CONFIG = {
