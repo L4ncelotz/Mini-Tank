@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 3 — Ricochet complete.
+Phase 4 — Match System complete.
 
 ## Done
 
@@ -41,6 +41,15 @@ Phase 3 — Ricochet complete.
   - [x] Write unit tests for ricochet reflection and limits
   - [x] Run typecheck and production build
   - [x] Verify ricochet reflection, feedback, and one-bounce limit in browser
+- [x] Phase 4 — Match System
+  - [x] Add MATCH_CONFIG and match types
+  - [x] Add reset method to Tank entity
+  - [x] Implement RoundManager with Best-of-5 logic
+  - [x] Integrate RoundManager and restart in Game coordinator
+  - [x] Update Renderer with scoreboard and round state banners
+  - [x] Write unit tests for RoundManager and match flow
+  - [x] Run typecheck and production build
+  - [x] Verify round transitions, score tracking, and match win in browser
 
 ## In Progress
 
@@ -48,7 +57,6 @@ None
 
 ## Next
 
-- [ ] Phase 4 — Match System
 - [ ] Phase 5 — Basic AI
 - [ ] Phase 6 — Defensive and Tactical AI
 - [ ] Phase 7 — Arena Maps

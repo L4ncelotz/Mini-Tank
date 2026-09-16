@@ -52,6 +52,15 @@ export class Tank {
     return this.hp <= 0;
   }
 
+  public reset(x: number, y: number, rotation = 0): void {
+    this.x = x;
+    this.y = y;
+    this.rotation = rotation;
+    this.speed = 0;
+    this.hp = this.maxHp;
+    this.cooldownTimer = 0;
+  }
+
   public getBarrelTip(): Vector2D {
     return {
       x: this.x + Math.cos(this.rotation) * this.config.barrelLength,

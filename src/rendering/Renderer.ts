@@ -2,7 +2,7 @@ import { ARENA_CONFIG, BULLET_CONFIG, PLAYER_CONFIG } from '../config/gameplay';
 import type { Bullet } from '../entities/Bullet';
 import type { Tank } from '../entities/Tank';
 import type { BounceImpact } from '../systems/CombatSystem';
-import type { ArenaBounds } from '../types/game';
+import type { ArenaBounds, MatchScore } from '../types/game';
 
 export class Renderer {
   public canvas: HTMLCanvasElement;
@@ -71,7 +71,8 @@ export class Renderer {
     tanks: readonly Tank[],
     bullets: readonly Bullet[],
     bounds: ArenaBounds,
-    bounceImpacts: readonly BounceImpact[] = []
+    bounceImpacts: readonly BounceImpact[] = [],
+    score?: MatchScore
   ): void {
     const ctx = this.ctx;
     const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
@@ -130,17 +131,17 @@ export class Renderer {
       this.renderTank(tank);
     }
 
-    // Minimal HUD Overlay
+    // Minimal HUD Overlay (Top-Left)
     const playerTank = tanks.find((t) => t.id === 'player') || tanks[0];
     const dummyTank = tanks.find((t) => t.id !== 'player');
 
     ctx.fillStyle = '#94a3b8';
     ctx.font = '600 14px system-ui, sans-serif';
-    ctx.fillText('MINI TANK DUEL — PHASE 3: RICOCHET', bounds.x + 20, bounds.y + 30);
+    ctx.fillText('MINI TANK DUEL — PHASE 4: MATCH SYSTEM', bounds.x + 20, bounds.y + 30);
 
     ctx.fillStyle = '#64748b';
     ctx.font = '500 12px system-ui, sans-serif';
-    ctx.fillText('CONTROLS: W/S (Drive)  A/D (Steer)  SPACE (Fire)  F (Fullscreen)', bounds.x + 20, bounds.y + 48);
+    ctx.fillText('CONTROLS: W/S (Drive)  A/D (Steer)  SPACE (Fire)  F (Fullscreen)  R (Restart)', bounds.x + 20, bounds.y + 48);
 
     if (playerTank) {
       const isReady = playerTank.canFire();
@@ -151,6 +152,7 @@ export class Renderer {
       ctx.fillText(reloadText, bounds.x + 20, bounds.y + 68);
     }
 
+    // Target Dummy Status (Top-Right)
     if (dummyTank) {
       ctx.fillStyle = dummyTank.isAlive() ? '#f43f5e' : '#64748b';
       ctx.font = '600 12px system-ui, monospace';
@@ -158,6 +160,142 @@ export class Renderer {
         ? `TARGET DUMMY HP: ${dummyTank.hp}/${dummyTank.maxHp}`
         : 'TARGET DUMMY: DESTROYED';
       ctx.fillText(dummyText, bounds.x + bounds.width - 240, bounds.y + 30);
+    }
+
+    // Best-of-5 Scoreboard (Top Center)
+    if (score) {
+      this.renderScoreboard(score, bounds);
+      this.renderStateBanner(score, bounds);
+    }
+  }
+
+  private renderScoreboard(score: MatchScore, bounds: ArenaBounds): void {
+    const ctx = this.ctx;
+    const centerX = bounds.x + bounds.width / 2;
+
+    // Match format title
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '700 13px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`ROUND ${score.currentRound}  •  BEST OF 5 (FIRST TO 3)`, centerX, bounds.y + 26);
+
+    // Score numbers
+    ctx.font = '800 22px system-ui, monospace';
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText(`${score.playerScore}`, centerX - 40, bounds.y + 54);
+
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('-', centerX, bounds.y + 54);
+
+    ctx.fillStyle = '#f43f5e';
+    ctx.fillText(`${score.opponentScore}`, centerX + 40, bounds.y + 54);
+
+    // Round win dots/pips for player and opponent
+    const pipRadius = 4;
+    const pipGap = 12;
+    for (let i = 0; i < score.roundsToWin; i++) {
+      // Player pips (left of center)
+      ctx.fillStyle = i < score.playerScore ? '#38bdf8' : '#1e293b';
+      ctx.beginPath();
+      ctx.arc(centerX - 60 - i * pipGap, bounds.y + 48, pipRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = i < score.playerScore ? '#0284c7' : '#334155';
+      ctx.stroke();
+
+      // Opponent pips (right of center)
+      ctx.fillStyle = i < score.opponentScore ? '#f43f5e' : '#1e293b';
+      ctx.beginPath();
+      ctx.arc(centerX + 60 + i * pipGap, bounds.y + 48, pipRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = i < score.opponentScore ? '#be123c' : '#334155';
+      ctx.stroke();
+    }
+
+    ctx.textAlign = 'left';
+  }
+
+  private renderStateBanner(score: MatchScore, bounds: ArenaBounds): void {
+    const ctx = this.ctx;
+    const centerX = bounds.x + bounds.width / 2;
+    const centerY = bounds.y + bounds.height * 0.35;
+
+    if (score.state === 'ready') {
+      ctx.save();
+      ctx.textAlign = 'center';
+
+      // Backdrop card
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.fillRect(centerX - 160, centerY - 45, 320, 90);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(centerX - 160, centerY - 45, 320, 90);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 32px system-ui, sans-serif';
+      ctx.fillText('READY', centerX, centerY + 2);
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = '600 14px system-ui, sans-serif';
+      ctx.fillText(`ROUND ${score.currentRound} BEGINS IN ${score.stateTimer.toFixed(1)}s`, centerX, centerY + 28);
+
+      ctx.restore();
+    } else if (score.state === 'round_over') {
+      ctx.save();
+      ctx.textAlign = 'center';
+
+      const isPlayerWinner = score.roundWinner === 'player';
+      const bannerColor = isPlayerWinner ? '#38bdf8' : '#f43f5e';
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+      ctx.fillRect(centerX - 200, centerY - 45, 400, 90);
+      ctx.strokeStyle = bannerColor;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(centerX - 200, centerY - 45, 400, 90);
+
+      ctx.fillStyle = bannerColor;
+      ctx.font = '900 26px system-ui, sans-serif';
+      const winnerTitle = score.roundWinner === 'draw'
+        ? 'ROUND DRAW!'
+        : isPlayerWinner
+          ? 'ROUND WON!'
+          : 'ROUND LOST!';
+      ctx.fillText(winnerTitle, centerX, centerY + 2);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '600 14px system-ui, sans-serif';
+      ctx.fillText(`NEXT ROUND IN ${score.stateTimer.toFixed(1)}s`, centerX, centerY + 28);
+
+      ctx.restore();
+    } else if (score.state === 'match_over') {
+      ctx.save();
+      ctx.textAlign = 'center';
+
+      const isPlayerWinner = score.matchWinner === 'player';
+      const bannerColor = isPlayerWinner ? '#38bdf8' : '#f43f5e';
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+      ctx.fillRect(centerX - 240, centerY - 65, 480, 130);
+      ctx.strokeStyle = bannerColor;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(centerX - 240, centerY - 65, 480, 130);
+
+      ctx.fillStyle = bannerColor;
+      ctx.font = '900 32px system-ui, sans-serif';
+      ctx.fillText(isPlayerWinner ? 'VICTORY!' : 'DEFEAT!', centerX, centerY - 15);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 18px system-ui, sans-serif';
+      ctx.fillText(
+        isPlayerWinner ? 'PLAYER WINS THE MATCH' : 'TARGET WINS THE MATCH',
+        centerX,
+        centerY + 16
+      );
+
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = '600 14px system-ui, monospace';
+      ctx.fillText('PRESS [R] TO PLAY AGAIN', centerX, centerY + 46);
+
+      ctx.restore();
     }
   }
 

@@ -40,3 +40,9 @@ export const BULLET_CONFIG = {
   color: '#38bdf8',
   bouncedColor: '#f59e0b',
 } as const;
+
+export const MATCH_CONFIG = {
+  roundsToWin: 3,
+  readyDuration: 1.2,
+  roundEndDuration: 1.8,
+} as const;

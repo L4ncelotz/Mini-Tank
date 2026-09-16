@@ -38,3 +38,16 @@ export interface RicochetEvent {
   bulletId: string;
   bounces: number;
 }
+
+export type RoundState = 'ready' | 'fighting' | 'round_over' | 'match_over';
+
+export interface MatchScore {
+  playerScore: number;
+  opponentScore: number;
+  currentRound: number;
+  roundsToWin: number;
+  state: RoundState;
+  stateTimer: number;
+  roundWinner: string | null;
+  matchWinner: string | null;
+}
