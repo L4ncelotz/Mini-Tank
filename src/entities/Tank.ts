@@ -53,10 +53,9 @@ export class Tank {
   }
 
   public getBarrelTip(): Vector2D {
-    const barrelDistance = this.config.length / 2 + this.config.barrelLength;
     return {
-      x: this.x + Math.cos(this.rotation) * barrelDistance,
-      y: this.y + Math.sin(this.rotation) * barrelDistance,
+      x: this.x + Math.cos(this.rotation) * this.config.barrelLength,
+      y: this.y + Math.sin(this.rotation) * this.config.barrelLength,
     };
   }
   public update(dt: number, controls: TankControls): void {

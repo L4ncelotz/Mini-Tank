@@ -87,4 +87,16 @@ describe('Tank Entity', () => {
     }
     expect(tank.speed).toBe(0);
   });
+
+  it('computes barrel tip precisely at the muzzle of the barrel', () => {
+    const tip0 = tank.getBarrelTip();
+    expect(tip0.x).toBeCloseTo(100 + PLAYER_CONFIG.barrelLength, 4);
+    expect(tip0.y).toBeCloseTo(100, 4);
+
+    // Rotate 90 degrees (+Y)
+    tank.rotation = Math.PI / 2;
+    const tip90 = tank.getBarrelTip();
+    expect(tip90.x).toBeCloseTo(100, 4);
+    expect(tip90.y).toBeCloseTo(100 + PLAYER_CONFIG.barrelLength, 4);
+  });
 });

@@ -9,8 +9,9 @@ export class Renderer {
   public scale = 1;
   public offsetX = 0;
   public offsetY = 0;
-
   private onResizeHandler: () => void;
+  private onKeyHandler: (e: KeyboardEvent) => void;
+  private onDblClickHandler: () => void;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -21,10 +22,28 @@ export class Renderer {
     this.ctx = context;
 
     this.onResizeHandler = () => this.resize();
+    this.onKeyHandler = (e: KeyboardEvent) => {
+      if (e.code === 'KeyF') {
+        this.toggleFullscreen();
+      }
+    };
+    this.onDblClickHandler = () => this.toggleFullscreen();
+
     if (typeof window !== 'undefined') {
       window.addEventListener('resize', this.onResizeHandler);
+      window.addEventListener('keydown', this.onKeyHandler);
+      this.canvas.addEventListener('dblclick', this.onDblClickHandler);
     }
     this.resize();
+  }
+
+  public toggleFullscreen(): void {
+    if (typeof document === 'undefined') return;
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
   }
 
   public resize(): void {
@@ -112,7 +131,7 @@ export class Renderer {
 
     ctx.fillStyle = '#64748b';
     ctx.font = '500 12px system-ui, sans-serif';
-    ctx.fillText('CONTROLS: W/S (Drive)  A/D (Steer)  SPACE (Fire)', bounds.x + 20, bounds.y + 48);
+    ctx.fillText('CONTROLS: W/S (Drive)  A/D (Steer)  SPACE (Fire)  F (Fullscreen)', bounds.x + 20, bounds.y + 48);
 
     if (playerTank) {
       const isReady = playerTank.canFire();
@@ -235,6 +254,14 @@ export class Renderer {
     ctx.lineWidth = 1;
     ctx.strokeRect(0, -PLAYER_CONFIG.barrelWidth / 2, PLAYER_CONFIG.barrelLength, PLAYER_CONFIG.barrelWidth);
 
+    // Muzzle brake ring at the tip of the barrel
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(
+      PLAYER_CONFIG.barrelLength - 3,
+      -PLAYER_CONFIG.barrelWidth / 2 - 1,
+      3,
+      PLAYER_CONFIG.barrelWidth + 2
+    );
     // Turret dome
     ctx.fillStyle = bodyColor;
     ctx.beginPath();
@@ -260,6 +287,8 @@ export class Renderer {
   public dispose(): void {
     if (typeof window !== 'undefined') {
       window.removeEventListener('resize', this.onResizeHandler);
+      window.removeEventListener('keydown', this.onKeyHandler);
     }
+    this.canvas.removeEventListener('dblclick', this.onDblClickHandler);
   }
 }
