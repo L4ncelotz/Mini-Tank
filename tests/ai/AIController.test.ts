@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { AIController } from '../../src/ai/AIController';
 import { DEFAULT_AI_CONFIG } from '../../src/ai/AIConfig';
 import { Tank } from '../../src/entities/Tank';
+import { Bullet } from '../../src/entities/Bullet';
 import type { ArenaBounds } from '../../src/types/game';
 
 describe('AIController', () => {
@@ -157,5 +158,73 @@ describe('AIController', () => {
     // Small step dt = 0.05s (still within reaction delay)
     const controls = ai.update(0.05, aiTank, playerTank, bounds);
     expect(controls.forward).toBe(1); // retained prior tactical intent
+  });
+
+  it('detects incoming bullets on a collision course as threats', () => {
+    aiTank.x = 750;
+    aiTank.y = 450;
+    // Bullet fired by player at (500, 450) heading directly towards AI at (750, 450)
+    const threat = new Bullet(500, 450, 0, 'player', 420);
+    const bullets = [threat];
+
+    const detected = ai.findIncomingThreat(aiTank, bullets);
+    expect(detected).toBe(threat);
+  });
+
+  it('ignores bullets that are moving away from the AI tank', () => {
+    // AI at (1000, 450), bullet at (1100, 450) heading away (+X)
+    const movingAway = new Bullet(1100, 450, 0, 'player', 420);
+    const detected = ai.findIncomingThreat(aiTank, [movingAway]);
+    expect(detected).toBeNull();
+  });
+
+  it('ignores bullets that will miss the AI tank', () => {
+    aiTank.x = 750;
+    aiTank.y = 450;
+    // Bullet at (500, 200) heading along +X, offset by 250 units in Y
+    const willMiss = new Bullet(500, 200, 0, 'player', 420);
+    const detected = ai.findIncomingThreat(aiTank, [willMiss]);
+    expect(detected).toBeNull();
+  });
+
+  it('delays evade maneuver with human-like reaction time', () => {
+    aiTank.x = 750;
+    aiTank.y = 450;
+    const threat = new Bullet(500, 450, 0, 'player', 420);
+    const bullets = [threat];
+
+    // Frame 0 (dt = 0.016s): threat newly observed, evadeReactionDelay countdown started
+    ai.update(0.016, aiTank, playerTank, bounds, bullets);
+    expect(ai.state).not.toBe('evade'); // not instant dodge at fire time!
+    expect(ai.evadeReactionTimer).toBeGreaterThan(0);
+
+    // After evadeReactionDelay elapses: state switches to evade
+    ai.update(ai.config.evadeReactionDelay + 0.05, aiTank, playerTank, bounds, bullets);
+    expect(ai.state).toBe('evade');
+    expect(ai.currentControls.forward).toBe(1); // moving along perpendicular dodge angle
+  });
+
+  it('pressures player when player is on reload cooldown and AI is armed', () => {
+    ai.reset();
+    ai.estimatedPlayerCooldown = 0.8; // player recently fired and is reloading
+    aiTank.cooldownTimer = 0; // AI cannon ready
+
+    ai.update(0.016, aiTank, playerTank, bounds, []);
+    expect(ai.state).toBe('pressure');
+    expect(ai.currentControls.forward).toBe(1); // aggressive advance
+  });
+
+  it('enters recover state when AI is low on health and player has advantage', () => {
+    ai.reset();
+    aiTank.x = 700;
+    aiTank.y = 450;
+    playerTank.x = 400;
+    playerTank.y = 450;
+    aiTank.hp = 1; // 1 HP left
+    playerTank.hp = 3; // player has health advantage
+
+    ai.update(0.016, aiTank, playerTank, bounds, []);
+    expect(ai.state).toBe('recover');
+    expect(ai.currentControls.forward).toBe(-1); // backs away to safe distance
   });
 });

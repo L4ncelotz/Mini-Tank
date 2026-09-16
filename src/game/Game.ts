@@ -107,7 +107,8 @@ export class Game {
           dt,
           this.opponentTank,
           this.playerTank,
-          this.arenaBounds
+          this.arenaBounds,
+          this.combat.bullets
         );
         this.opponentTank.update(dt, aiControls);
         CollisionSystem.resolveTankBoundaryCollision(this.opponentTank, this.arenaBounds);
@@ -137,7 +138,8 @@ export class Game {
       this.combat.bullets,
       this.arenaBounds,
       this.combat.bounceImpacts,
-      this.roundManager.getScore()
+      this.roundManager.getScore(),
+      this.aiController.state
     );
   }
 

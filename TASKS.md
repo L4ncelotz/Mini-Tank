@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 5 — Basic AI complete.
+Phase 6 — Defensive and Tactical AI complete.
 
 ## Done
 
@@ -60,6 +60,17 @@ Phase 5 — Basic AI complete.
   - [x] Write unit tests for AIController logic and constraints
   - [x] Run typecheck and production build
   - [x] Verify AI duel behavior in live browser
+- [x] Phase 6 — Defensive and Tactical AI
+  - [x] Add tactical state types and config in AIConfig
+  - [x] Implement incoming bullet detection with trajectory projection
+  - [x] Implement evade behavior with reaction delay
+  - [x] Implement player cooldown estimation and pressure state
+  - [x] Implement recover and tactical repositioning states
+  - [x] Integrate bullets into AIController update in Game coordinator
+  - [x] Update Renderer HUD with AI tactical state indicator
+  - [x] Write unit tests for defensive and tactical AI states
+  - [x] Run typecheck and production build
+  - [x] Verify defensive dodging, pressure windows, and readable state transitions in browser
 
 ## In Progress
 
@@ -67,7 +78,6 @@ None
 
 ## Next
 
-- [ ] Phase 6 — Defensive and Tactical AI
 - [ ] Phase 7 — Arena Maps
 - [ ] Phase 8 — Dash and Game Feel
 - [ ] Phase 9 — Audio

@@ -1,4 +1,5 @@
 import { ARENA_CONFIG, BULLET_CONFIG, PLAYER_CONFIG } from '../config/gameplay';
+import type { TacticalState } from '../ai/AIConfig';
 import type { Bullet } from '../entities/Bullet';
 import type { Tank } from '../entities/Tank';
 import type { BounceImpact } from '../systems/CombatSystem';
@@ -72,11 +73,11 @@ export class Renderer {
     bullets: readonly Bullet[],
     bounds: ArenaBounds,
     bounceImpacts: readonly BounceImpact[] = [],
-    score?: MatchScore
+    score?: MatchScore,
+    aiState?: TacticalState
   ): void {
     const ctx = this.ctx;
     const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-
     // Reset transform & clear full canvas
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#0a0e17';
@@ -136,8 +137,7 @@ export class Renderer {
     const opponentTank = tanks.find((t) => t.id !== 'player');
 
     ctx.fillStyle = '#94a3b8';
-    ctx.font = '600 14px system-ui, sans-serif';
-    ctx.fillText('MINI TANK DUEL — PHASE 5: BASIC AI', bounds.x + 20, bounds.y + 30);
+    ctx.fillText('MINI TANK DUEL — PHASE 6: DEFENSIVE & TACTICAL AI', bounds.x + 20, bounds.y + 30);
 
     ctx.fillStyle = '#64748b';
     ctx.font = '500 12px system-ui, sans-serif';
@@ -156,10 +156,11 @@ export class Renderer {
     if (opponentTank) {
       ctx.fillStyle = opponentTank.isAlive() ? '#f43f5e' : '#64748b';
       ctx.font = '600 12px system-ui, monospace';
+      const stateSuffix = opponentTank.isAlive() && aiState ? ` [${aiState.toUpperCase()}]` : '';
       const aiText = opponentTank.isAlive()
-        ? `AI OPPONENT HP: ${opponentTank.hp}/${opponentTank.maxHp}`
+        ? `AI OPPONENT HP: ${opponentTank.hp}/${opponentTank.maxHp}${stateSuffix}`
         : 'AI OPPONENT: DESTROYED';
-      ctx.fillText(aiText, bounds.x + bounds.width - 240, bounds.y + 30);
+      ctx.fillText(aiText, bounds.x + bounds.width - 320, bounds.y + 30);
     }
     // Best-of-5 Scoreboard (Top Center)
     if (score) {
