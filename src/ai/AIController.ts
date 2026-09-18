@@ -9,10 +9,9 @@ export class AIController {
   public config: AIConfig;
   public state: TacticalState = 'engage';
   public decisionTimer = 0;
-  public currentControls: TankControls = { forward: 0, rotate: 0, fire: false };
-  public targetAngle = 0;
+  public currentControls: TankControls = { forward: 0, rotate: 0, fire: false, dash: false };
   public distanceToTarget = 0;
-
+  public targetAngle = 0;
   public estimatedPlayerCooldown = 0;
   public incomingBullet: Bullet | null = null;
   public evadeReactionTimer = 0;
@@ -25,10 +24,9 @@ export class AIController {
   public reset(): void {
     this.state = 'engage';
     this.decisionTimer = 0;
-    this.currentControls = { forward: 0, rotate: 0, fire: false };
+    this.currentControls = { forward: 0, rotate: 0, fire: false, dash: false };
     this.targetAngle = 0;
     this.distanceToTarget = 0;
-    this.estimatedPlayerCooldown = 0;
     this.incomingBullet = null;
     this.evadeReactionTimer = 0;
     this.evadePerpendicularDir = 1;
@@ -43,7 +41,7 @@ export class AIController {
     walls: Wall[] = []
   ): TankControls {
     if (!aiTank.isAlive() || !playerTank.isAlive()) {
-      this.currentControls = { forward: 0, rotate: 0, fire: false };
+      this.currentControls = { forward: 0, rotate: 0, fire: false, dash: false };
       return this.currentControls;
     }
     // Update estimated player cooldown
@@ -165,6 +163,10 @@ export class AIController {
     this.targetAngle = Math.atan2(chosenY, chosenX);
     this.currentControls.forward = 1; // Move perpendicular to incoming line of fire
 
+    // Tactical dash if threat is close
+    const threatDist = Math.hypot(bullet.x - aiTank.x, bullet.y - aiTank.y);
+    this.currentControls.dash = threatDist < 250 && aiTank.canDash();
+
     // During evade, only fire if accidentally aligned with player
     const angleToPlayer = Math.atan2(toPlayerY, toPlayerX);
     let aimDiff = angleToPlayer - aiTank.rotation;
@@ -183,6 +185,8 @@ export class AIController {
     this.distanceToTarget = Math.hypot(dx, dy);
     this.targetAngle = Math.atan2(dy, dx);
 
+    let angleDiff = this.targetAngle - aiTank.rotation;
+    angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
     const buffer = this.config.boundaryBuffer;
     const headingX = Math.cos(aiTank.rotation);
     const headingY = Math.sin(aiTank.rotation);
@@ -224,6 +228,7 @@ export class AIController {
       const centerY = bounds.y + bounds.height / 2;
       this.targetAngle = Math.atan2(centerY - aiTank.y, centerX - aiTank.x);
       this.currentControls.fire = false;
+      this.currentControls.dash = false;
       return;
     }
     // 2. Pressure State: Player is reloading and AI is ready to punish
@@ -241,8 +246,8 @@ export class AIController {
         this.currentControls.forward = 0;
       }
 
-      let angleDiff = this.targetAngle - aiTank.rotation;
-      angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+      this.currentControls.dash = this.distanceToTarget > 360 && aiTank.canDash();
+
       this.currentControls.fire = Math.abs(angleDiff) <= this.config.aimThreshold && aiTank.canFire();
       return;
     }
@@ -262,9 +267,7 @@ export class AIController {
       } else {
         this.currentControls.forward = 0;
       }
-
-      let angleDiff = this.targetAngle - aiTank.rotation;
-      angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+      this.currentControls.dash = false;
       this.currentControls.fire = Math.abs(angleDiff) <= this.config.aimThreshold && aiTank.canFire();
       return;
     }
@@ -283,7 +286,8 @@ export class AIController {
       this.currentControls.forward = 0;
     }
 
-    let angleDiff = this.targetAngle - aiTank.rotation;
+    this.currentControls.dash = false;
+    angleDiff = this.targetAngle - aiTank.rotation;
     angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
     this.currentControls.fire = Math.abs(angleDiff) <= this.config.aimThreshold && aiTank.canFire();
   }

@@ -46,3 +46,9 @@ export const MATCH_CONFIG = {
   readyDuration: 1.2,
   roundEndDuration: 1.8,
 } as const;
+
+export const DASH_CONFIG = {
+  speed: 480,
+  duration: 0.16,
+  cooldown: 2.5,
+} as const;

@@ -14,6 +14,20 @@ export interface TankControls {
   forward: number; // 1 (forward), -1 (reverse), 0 (neutral)
   rotate: number;  // 1 (clockwise/right), -1 (counter-clockwise/left), 0 (neutral)
   fire: boolean;
+  dash: boolean;
+}
+
+export interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  color: string;
+  size: number;
+  alpha: number;
+  life: number;
+  maxLife: number;
+  type?: 'spark' | 'smoke' | 'trail' | 'debris';
 }
 
 export interface BulletState {

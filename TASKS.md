@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 7 — Arena Maps complete.
+Phase 8 — Dash and Game Feel complete.
 
 ## Done
 
@@ -83,13 +83,20 @@ Phase 7 — Arena Maps complete.
   - [x] Run typecheck and production build
   - [x] Verify all 3 maps, spawn points, and ricochets off internal walls in browser
 
+- [x] Phase 8 — Dash and Game Feel
+  - [x] Add dash config and dash control types
+  - [x] Implement dash mechanics and cooldown on Tank entity
+  - [x] Add Shift key handling to InputManager
+  - [x] Implement hit flash and muzzle flash feedback on Tank
+  - [x] Implement particle system and subtle screen shake
+  - [x] Integrate tactical dash into AIController
+  - [x] Update Renderer and HUD with dash indicator and effects
+  - [x] Write unit tests for dash cooldown and effects
+  - [x] Run typecheck and production build
+  - [x] Verify dash movement, cooldowns, particle feedback, and screen shake in browser
+
 ## In Progress
 
-None
-
-## Next
-
-- [ ] Phase 8 — Dash and Game Feel
 - [ ] Phase 9 — Audio
 - [ ] Phase 10 — Ranked Bots
 - [ ] Phase 11 — Local Stats and Final Polish

@@ -144,12 +144,12 @@ describe('AIController', () => {
     expect(aiTank.isAlive()).toBe(false);
 
     const controls = ai.update(0.016, aiTank, playerTank, bounds);
-    expect(controls).toEqual({ forward: 0, rotate: 0, fire: false });
+    expect(controls).toEqual({ forward: 0, rotate: 0, fire: false, dash: false });
   });
 
   it('respects reaction delay timing before re-evaluating tactics', () => {
     ai.decisionTimer = 0.2; // in middle of reaction delay
-    ai.currentControls = { forward: 1, rotate: 0, fire: false };
+    ai.currentControls = { forward: 1, rotate: 0, fire: false, dash: false };
 
     // Move player suddenly
     playerTank.x = 100;

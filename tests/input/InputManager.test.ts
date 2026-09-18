@@ -41,16 +41,16 @@ describe('InputManager', () => {
     const mockTarget = new MockEventTarget();
     const input = new InputManager(mockTarget);
 
-    expect(input.getControls()).toEqual({ forward: 0, rotate: 0, fire: false });
+    expect(input.getControls()).toEqual({ forward: 0, rotate: 0, fire: false, dash: false });
 
     mockTarget.dispatchEvent(createKeyEvent('keydown', 'KeyW'));
-    expect(input.getControls()).toEqual({ forward: 1, rotate: 0, fire: false });
+    expect(input.getControls()).toEqual({ forward: 1, rotate: 0, fire: false, dash: false });
 
     mockTarget.dispatchEvent(createKeyEvent('keyup', 'KeyW'));
-    expect(input.getControls()).toEqual({ forward: 0, rotate: 0, fire: false });
+    expect(input.getControls()).toEqual({ forward: 0, rotate: 0, fire: false, dash: false });
 
     mockTarget.dispatchEvent(createKeyEvent('keydown', 'KeyS'));
-    expect(input.getControls()).toEqual({ forward: -1, rotate: 0, fire: false });
+    expect(input.getControls()).toEqual({ forward: -1, rotate: 0, fire: false, dash: false });
 
     input.dispose();
   });
@@ -60,11 +60,11 @@ describe('InputManager', () => {
     const input = new InputManager(mockTarget);
 
     mockTarget.dispatchEvent(createKeyEvent('keydown', 'KeyA'));
-    expect(input.getControls()).toEqual({ forward: 0, rotate: -1, fire: false });
+    expect(input.getControls()).toEqual({ forward: 0, rotate: -1, fire: false, dash: false });
 
     mockTarget.dispatchEvent(createKeyEvent('keyup', 'KeyA'));
     mockTarget.dispatchEvent(createKeyEvent('keydown', 'KeyD'));
-    expect(input.getControls()).toEqual({ forward: 0, rotate: 1, fire: false });
+    expect(input.getControls()).toEqual({ forward: 0, rotate: 1, fire: false, dash: false });
 
     input.dispose();
   });
@@ -99,13 +99,28 @@ describe('InputManager', () => {
     input.dispose();
   });
 
+  it('detects dash control from Shift', () => {
+    const mockTarget = new MockEventTarget();
+    const input = new InputManager(mockTarget);
+
+    expect(input.getControls().dash).toBe(false);
+
+    mockTarget.dispatchEvent(createKeyEvent('keydown', 'ShiftLeft'));
+    expect(input.getControls().dash).toBe(true);
+
+    mockTarget.dispatchEvent(createKeyEvent('keyup', 'ShiftLeft'));
+    expect(input.getControls().dash).toBe(false);
+
+    input.dispose();
+  });
+
   it('supports arrow keys', () => {
     const mockTarget = new MockEventTarget();
     const input = new InputManager(mockTarget);
 
     mockTarget.dispatchEvent(createKeyEvent('keydown', 'ArrowUp'));
     mockTarget.dispatchEvent(createKeyEvent('keydown', 'ArrowRight'));
-    expect(input.getControls()).toEqual({ forward: 1, rotate: 1, fire: false });
+    expect(input.getControls()).toEqual({ forward: 1, rotate: 1, fire: false, dash: false });
 
     input.dispose();
   });
@@ -117,10 +132,11 @@ describe('InputManager', () => {
     mockTarget.dispatchEvent(createKeyEvent('keydown', 'KeyW'));
     mockTarget.dispatchEvent(createKeyEvent('keydown', 'KeyD'));
     mockTarget.dispatchEvent(createKeyEvent('keydown', 'Space'));
-    expect(input.getControls()).toEqual({ forward: 1, rotate: 1, fire: true });
+    mockTarget.dispatchEvent(createKeyEvent('keydown', 'ShiftLeft'));
+    expect(input.getControls()).toEqual({ forward: 1, rotate: 1, fire: true, dash: true });
 
     mockTarget.dispatchEvent({ type: 'blur' } as Event);
-    expect(input.getControls()).toEqual({ forward: 0, rotate: 0, fire: false });
+    expect(input.getControls()).toEqual({ forward: 0, rotate: 0, fire: false, dash: false });
 
     input.dispose();
   });

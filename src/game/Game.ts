@@ -125,6 +125,7 @@ export class Game {
 
     if (this.roundManager.isFighting()) {
       // Player update
+      const wasPlayerDashing = this.playerTank.isDashing();
       const controls = this.input.getControls();
       this.playerTank.update(dt, controls);
       CollisionSystem.resolveTankWallCollisions(
@@ -133,12 +134,20 @@ export class Game {
         this.arenaBounds
       );
 
+      if (this.playerTank.isDashing()) {
+        this.renderer.spawnDashParticles(this.playerTank);
+      }
+      if (this.playerTank.isDashing() && !wasPlayerDashing) {
+        this.renderer.addTrauma(0.12);
+      }
+
       if (controls.fire) {
         this.combat.fireBullet(this.playerTank);
       }
 
       // AI opponent update
       if (this.opponentTank && this.opponentTank.isAlive()) {
+        const wasOpponentDashing = this.opponentTank.isDashing();
         const aiControls = this.aiController.update(
           dt,
           this.opponentTank,
@@ -153,22 +162,34 @@ export class Game {
           this.arena.walls,
           this.arenaBounds
         );
-
+        if (this.opponentTank.isDashing() && !wasOpponentDashing) {
+          this.renderer.addTrauma(0.12);
+        }
         if (aiControls.fire) {
           this.combat.fireBullet(this.opponentTank);
         }
       }
     } else {
-      this.playerTank.update(dt, { forward: 0, rotate: 0, fire: false });
+      this.playerTank.update(dt, { forward: 0, rotate: 0, fire: false, dash: false });
       if (this.opponentTank) {
-        this.opponentTank.update(dt, { forward: 0, rotate: 0, fire: false });
+        this.opponentTank.update(dt, { forward: 0, rotate: 0, fire: false, dash: false });
       }
     }
 
     const tanks = this.getTanks();
-    this.combat.update(dt, this.arenaBounds, tanks, this.arena.walls);
+    const { hits, bounces } = this.combat.update(dt, this.arenaBounds, tanks, this.arena.walls);
+    for (const hit of hits) {
+      this.renderer.addTrauma(hit.target.isAlive() ? 0.35 : 0.6);
+      this.renderer.spawnHitParticles(
+        hit.bullet.x,
+        hit.bullet.y,
+        hit.target.id === 'player' ? '#00f0ff' : '#ff0055'
+      );
+    }
+    for (const bounce of bounces) {
+      this.renderer.spawnRicochetSparks(bounce.x, bounce.y, bounce.normalX, bounce.normalY);
+    }
   }
-
   public getTanks(): Tank[] {
     return this.opponentTank ? [this.playerTank, this.opponentTank] : [this.playerTank];
   }

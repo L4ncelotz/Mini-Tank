@@ -3,7 +3,8 @@ import type { TacticalState } from '../ai/AIConfig';
 import type { Bullet } from '../entities/Bullet';
 import type { Tank } from '../entities/Tank';
 import type { BounceImpact } from '../systems/CombatSystem';
-import type { ArenaBounds, MatchScore, Wall } from '../types/game';
+import type { ArenaBounds, MatchScore, Particle, Wall } from '../types/game';
+
 
 export class Renderer {
   public canvas: HTMLCanvasElement;
@@ -11,10 +12,106 @@ export class Renderer {
   public scale = 1;
   public offsetX = 0;
   public offsetY = 0;
+  public particles: Particle[] = [];
+  public shakeTrauma = 0;
   private onResizeHandler: () => void;
   private onKeyHandler: (e: KeyboardEvent) => void;
   private onDblClickHandler: () => void;
 
+  public addTrauma(amount: number): void {
+    this.shakeTrauma = Math.min(1, this.shakeTrauma + amount);
+  }
+
+  public spawnHitParticles(x: number, y: number, color: string, count = 14): void {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 60 + Math.random() * 180;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        color,
+        size: 1.5 + Math.random() * 2.5,
+        alpha: 1,
+        life: 0,
+        maxLife: 0.25 + Math.random() * 0.2,
+        type: 'debris',
+      });
+    }
+    if (this.particles.length > 120) {
+      this.particles.splice(0, this.particles.length - 120);
+    }
+  }
+
+  public spawnRicochetSparks(x: number, y: number, normalX: number, normalY: number, count = 10): void {
+    const baseAngle = Math.atan2(normalY, normalX);
+    for (let i = 0; i < count; i++) {
+      const spread = (Math.random() - 0.5) * Math.PI * 0.8;
+      const angle = baseAngle + spread;
+      const speed = 120 + Math.random() * 220;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        color: '#ffaa00',
+        size: 1.5 + Math.random() * 2,
+        alpha: 1,
+        life: 0,
+        maxLife: 0.2 + Math.random() * 0.15,
+        type: 'spark',
+      });
+    }
+    if (this.particles.length > 120) {
+      this.particles.splice(0, this.particles.length - 120);
+    }
+  }
+
+  public spawnDashParticles(tank: Tank): void {
+    const backAngle = tank.rotation + Math.PI;
+    const isPlayer = tank.id === 'player';
+    const color = isPlayer ? '#00f0ff' : '#ff0055';
+    for (let i = 0; i < 2; i++) {
+      const spread = (Math.random() - 0.5) * 0.6;
+      const angle = backAngle + spread;
+      const speed = 40 + Math.random() * 80;
+      this.particles.push({
+        x: tank.x + (Math.random() - 0.5) * 10,
+        y: tank.y + (Math.random() - 0.5) * 10,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        color,
+        size: 2 + Math.random() * 3,
+        alpha: 0.8,
+        life: 0,
+        maxLife: 0.2,
+        type: 'trail',
+      });
+    }
+    if (this.particles.length > 120) {
+      this.particles.splice(0, this.particles.length - 120);
+    }
+  }
+
+  private renderParticles(dt: number): void {
+    const ctx = this.ctx;
+    for (const p of this.particles) {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life += dt;
+      p.alpha = Math.max(0, 1 - p.life / p.maxLife);
+
+      ctx.save();
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.alpha;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    this.particles = this.particles.filter((p) => p.life < p.maxLife);
+  }
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     const context = canvas.getContext('2d');
@@ -78,23 +175,16 @@ export class Renderer {
     aiState?: TacticalState,
     mapName?: string
   ): void {
-    const ctx = this.ctx;
-    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-
-    // Reset transform & clear full canvas
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = '#03060c';
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Apply viewport scale and translation transform
-    ctx.setTransform(
-      this.scale * dpr,
-      0,
-      0,
-      this.scale * dpr,
-      this.offsetX * dpr,
-      this.offsetY * dpr
-    );
+    this.ctx.save();
+    
+    // Ensure line width scales somewhat reasonably for rendering context
+    this.shakeTrauma = Math.max(0, this.shakeTrauma - 0.016 * 2.5);
+    if (this.shakeTrauma > 0) {
+      const shakeMag = this.shakeTrauma * this.shakeTrauma * 7;
+      const sx = (Math.random() * 2 - 1) * shakeMag;
+      const sy = (Math.random() * 2 - 1) * shakeMag;
+      this.ctx.translate(sx, sy);
+    }
 
     // 1. High-Tech Cyber Battlefield Floor & Boundaries
     this.renderFloor(bounds);
@@ -113,10 +203,13 @@ export class Renderer {
       this.renderTank(tank);
     }
 
-    // 6. Tournament Broadcast HUD Overlay
+    // 6. Active Particle Effects (dash smoke, sparks, hit debris)
+    this.renderParticles(0.016);
+
+    // 7. Tournament Broadcast HUD Overlay
     this.renderHUD(tanks, bounds, mapName, aiState);
 
-    // 7. Best-of-5 Scoreboard & Match State Banners
+    // 8. Best-of-5 Scoreboard & Match State Banners
     if (score) {
       this.renderScoreboard(score, bounds);
       this.renderStateBanner(score, bounds);
@@ -322,6 +415,31 @@ export class Renderer {
     ctx.fill();
     ctx.restore();
 
+    // Dash Ghost Trail Afterimages
+    if (tank.isDashing()) {
+      ctx.save();
+      const ghostColor = isPlayer ? 'rgba(0, 240, 255, 0.28)' : 'rgba(255, 0, 85, 0.28)';
+      ctx.translate(
+        tank.x - Math.cos(tank.rotation) * 16,
+        tank.y - Math.sin(tank.rotation) * 16
+      );
+      ctx.rotate(tank.rotation);
+      ctx.fillStyle = ghostColor;
+      ctx.fillRect(-halfLen, -halfWid, length, width);
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(
+        tank.x - Math.cos(tank.rotation) * 28,
+        tank.y - Math.sin(tank.rotation) * 28
+      );
+      ctx.rotate(tank.rotation);
+      ctx.fillStyle = isPlayer ? 'rgba(0, 240, 255, 0.14)' : 'rgba(255, 0, 85, 0.14)';
+      ctx.fillRect(-halfLen, -halfWid, length, width);
+      ctx.restore();
+
+      this.spawnDashParticles(tank);
+    }
     // 2. Health Battery Bar Above Tank (World-Space unrotated)
     ctx.save();
     ctx.translate(tank.x, tank.y);
@@ -467,6 +585,26 @@ export class Renderer {
       ctx.restore();
     }
 
+    // Muzzle Energy Flash Burst
+    if (tank.muzzleFlashTimer > 0) {
+      ctx.save();
+      const flashRatio = tank.muzzleFlashTimer / 0.08;
+      ctx.shadowColor = neonGlowColor;
+      ctx.shadowBlur = 18;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(barrelLen + 6, 0, 6 * flashRatio, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = neonGlowColor;
+      ctx.beginPath();
+      ctx.moveTo(barrelLen, -halfBW - 5);
+      ctx.lineTo(barrelLen + 16 * flashRatio, 0);
+      ctx.lineTo(barrelLen, halfBW + 5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
     // 6. Faceted Armored Turret Housing
     const tRadius = PLAYER_CONFIG.turretRadius;
     ctx.fillStyle = primaryColor;
@@ -491,6 +629,20 @@ export class Renderer {
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.arc(1, 0, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Hit Flash Damage Highlight
+    if (tank.hitFlashTimer > 0) {
+      ctx.save();
+      const flashAlpha = tank.hitFlashTimer / 0.12;
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.75 * flashAlpha})`;
+      ctx.shadowColor = '#ffffff';
+      ctx.shadowBlur = 14;
+      ctx.fillRect(hullX - 1, hullY - 1, hullW + 2, hullH + 2);
+      ctx.beginPath();
+      ctx.arc(0, 0, tRadius + 2, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -626,6 +778,12 @@ export class Renderer {
       ctx.font = '700 11px "Rajdhani", monospace';
       ctx.fillStyle = isReady ? '#00f0ff' : '#94a3b8';
       ctx.fillText(isReady ? 'CANNON ARMED' : 'RELOADING...', bounds.x + 160, meterY + 6);
+
+      // Dash Readiness Meter
+      const isDashReady = playerTank.canDash();
+      ctx.fillStyle = isDashReady ? '#00f0ff' : '#64748b';
+      const dashText = isDashReady ? 'DASH READY' : `DASH ${playerTank.dashCooldownTimer.toFixed(1)}s`;
+      ctx.fillText(dashText, bounds.x + 245, meterY + 6);
     }
 
     // Right: Opponent Profile & Tactical State Badge
@@ -671,6 +829,7 @@ export class Renderer {
       { key: 'W/S', label: 'DRIVE' },
       { key: 'A/D', label: 'STEER' },
       { key: 'SPACE', label: 'FIRE' },
+      { key: 'SHIFT', label: 'DASH' },
       { key: 'M', label: 'MAP' },
       { key: 'F', label: 'FULLSCREEN' },
       { key: 'R', label: 'RESTART' },

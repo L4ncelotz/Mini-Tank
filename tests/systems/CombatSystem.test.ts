@@ -43,7 +43,7 @@ describe('CombatSystem', () => {
     expect(combat.bullets.length).toBe(1);
 
     // Update tank past cooldown
-    playerTank.update(BULLET_CONFIG.cooldown + 0.05, { forward: 0, rotate: 0, fire: false });
+    playerTank.update(BULLET_CONFIG.cooldown + 0.05, { forward: 0, rotate: 0, fire: false, dash: false });
     expect(playerTank.canFire()).toBe(true);
 
     const thirdBullet = combat.fireBullet(playerTank);
@@ -95,7 +95,7 @@ describe('CombatSystem', () => {
     // Update until bullet bounces off top wall and hits target
     let hitRecorded = false;
     for (let i = 0; i < 60; i++) {
-      const hits = combat.update(1 / 60, bounds, [playerTank, targetTank]);
+      const { hits } = combat.update(1 / 60, bounds, [playerTank, targetTank]);
       if (hits.length > 0) {
         hitRecorded = true;
         break;
@@ -117,7 +117,7 @@ describe('CombatSystem', () => {
     // Update combat until bullet reaches targetTank
     let hitsRecorded = 0;
     for (let i = 0; i < 60; i++) {
-      const hits = combat.update(1 / 60, bounds, [playerTank, targetTank]);
+      const { hits } = combat.update(1 / 60, bounds, [playerTank, targetTank]);
       if (hits.length > 0) {
         hitsRecorded += hits.length;
       }
@@ -135,7 +135,7 @@ describe('CombatSystem', () => {
     bullet.x = playerTank.x;
     bullet.y = playerTank.y;
 
-    const hits = combat.update(0.01, bounds, [playerTank]);
+    const { hits } = combat.update(0.01, bounds, [playerTank]);
     expect(hits.length).toBe(0);
     expect(playerTank.hp).toBe(3);
     expect(bullet.alive).toBe(true);

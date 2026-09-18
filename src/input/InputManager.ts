@@ -12,13 +12,15 @@ const PREVENT_DEFAULT_KEYS: Record<string, true> = {
   Space: true,
   KeyR: true,
   KeyM: true,
+  ShiftLeft: true,
+  ShiftRight: true,
 };
-
 export class InputManager {
   private activeKeys = new Set<string>();
   private fireRequested = false;
   private restartRequested = false;
   private mapSwitchRequested = false;
+  private dashRequested = false;
   private onKeyDownHandler: (e: KeyboardEvent) => void;
   private onKeyUpHandler: (e: KeyboardEvent) => void;
   private onBlurHandler: () => void;
@@ -37,6 +39,9 @@ export class InputManager {
       }
       if (e.code === 'KeyM') {
         this.mapSwitchRequested = true;
+      }
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        this.dashRequested = true;
       }
       if (PREVENT_DEFAULT_KEYS[e.code]) {
         e.preventDefault();
@@ -72,10 +77,14 @@ export class InputManager {
     const fire = this.isDown('Space') || this.fireRequested;
     this.fireRequested = false;
 
+    const dash =
+      this.isDown('ShiftLeft') || this.isDown('ShiftRight') || this.dashRequested;
+    this.dashRequested = false;
+
     const forward = (isForward ? 1 : 0) - (isReverse ? 1 : 0);
     const rotate = (isRight ? 1 : 0) - (isLeft ? 1 : 0);
 
-    return { forward, rotate, fire };
+    return { forward, rotate, fire, dash };
   }
 
   public isRestartRequested(): boolean {
@@ -95,6 +104,7 @@ export class InputManager {
     this.fireRequested = false;
     this.restartRequested = false;
     this.mapSwitchRequested = false;
+    this.dashRequested = false;
   }
 
   public dispose(): void {

@@ -38,8 +38,9 @@ export class CombatSystem {
     bounds: ArenaBounds,
     tanks: Tank[],
     walls: Wall[] = []
-  ): CombatHitEvent[] {
+  ): { hits: CombatHitEvent[]; bounces: BounceImpact[] } {
     const hits: CombatHitEvent[] = [];
+    const bounces: BounceImpact[] = [];
 
     // Update existing bounce impacts
     for (const impact of this.bounceImpacts) {
@@ -54,14 +55,16 @@ export class CombatSystem {
       // Check internal and boundary wall collisions and ricochet
       const wallCol = CollisionSystem.resolveBulletWallCollisions(bullet, walls, bounds);
       if (wallCol?.bounced) {
-        this.bounceImpacts.push({
+        const impact = {
           x: wallCol.impactX,
           y: wallCol.impactY,
           normalX: wallCol.normalX,
           normalY: wallCol.normalY,
           timer: 0.2,
           maxTime: 0.2,
-        });
+        };
+        this.bounceImpacts.push(impact);
+        bounces.push(impact);
       }
 
       if (!bullet.alive) continue;
@@ -84,7 +87,7 @@ export class CombatSystem {
     // Filter out destroyed or expired bullets
     this.bullets = this.bullets.filter((b) => b.alive);
 
-    return hits;
+    return { hits, bounces };
   }
 
   public clear(): void {
